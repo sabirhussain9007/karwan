@@ -194,7 +194,11 @@ export default function Navbar() {
                     My Profile
                   </Link>
                   <button
-                    onClick={() => signOut({ callbackUrl: "/" })}
+                   onClick={() =>
+  signOut({
+    callbackUrl: `${window.location.origin}/`,
+  })
+}
                     className="w-full text-left px-4 py-3 text-sm text-stone-300 hover:bg-stone-800 hover:text-red-500 rounded-b-xl transition border-t border-stone-800"
                   >
                     Sign Out
