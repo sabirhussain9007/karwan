@@ -220,7 +220,7 @@ const Home = () => {
               <span className="inline-flex rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.45em] text-amber-300 shadow-sm">
                 Premium Selection
               </span>
-              <h2 className="mt-6 text-5xl md:text-6xl font-serif font-black uppercase tracking-[0.32em] text-white leading-tight">
+              <h2 className="mt-6 text-5xl md:text-5xl font-serif font-black uppercase tracking-[0.05 em] text-white leading-tight">
                 PREMIUM SELECTIONS
               </h2>
               <p className="mt-4 text-stone-400 text-sm uppercase tracking-[0.35em] font-medium leading-relaxed">
