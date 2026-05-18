@@ -35,6 +35,7 @@ export default function CommunityPage() {
   const [commentText, setCommentText] = useState('');
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [postErrors, setPostErrors] = useState<{title?: string, content?: string}>({});
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,8 +79,18 @@ export default function CommunityPage() {
     }
   };
 
+  const validatePost = () => {
+    const errors: any = {};
+    let isValid = true;
+    if (!newPost.title.trim()) { errors.title = "Title is required"; isValid = false; }
+    if (!newPost.content.trim()) { errors.content = "Story content is required"; isValid = false; }
+    setPostErrors(errors);
+    return isValid;
+  };
+
   const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validatePost()) return;
     setIsSubmitting(true);
     try {
       const res = await fetch('/api/posts', {
@@ -178,14 +189,17 @@ export default function CommunityPage() {
         >
           <h2 className="text-xl font-bold text-white mb-6">Share Your Journey</h2>
           <form onSubmit={handlePostSubmit} className="space-y-4">
-            <input
-              type="text"
-              placeholder="Journey title..."
-              value={newPost.title}
-              onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-              required
-              className="w-full px-4 py-3 bg-stone-950 border border-stone-800 rounded-xl text-white placeholder:text-stone-600 focus:outline-none focus:border-amber-600"
-            />
+            <div>
+              <input
+                type="text"
+                placeholder="Journey title..."
+                value={newPost.title}
+                onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                required
+                className={`w-full px-4 py-3 bg-stone-950 border ${postErrors.title ? 'border-red-500' : 'border-stone-800 focus:border-amber-600'} rounded-xl text-white placeholder:text-stone-600 focus:outline-none transition-colors`}
+              />
+              {postErrors.title && <p className="mt-1 text-xs text-red-500">{postErrors.title}</p>}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
                 type="text"
@@ -225,14 +239,17 @@ export default function CommunityPage() {
               </div>
             )}
 
-            <textarea
-              placeholder="Tell your travel story..."
-              value={newPost.content}
-              onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-              required
-              rows={4}
-              className="w-full px-4 py-3 bg-stone-950 border border-stone-800 rounded-xl text-white placeholder:text-stone-600 focus:outline-none focus:border-amber-600 resize-none"
-            />
+            <div>
+              <textarea
+                placeholder="Tell your travel story..."
+                value={newPost.content}
+                onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                required
+                rows={4}
+                className={`w-full px-4 py-3 bg-stone-950 border ${postErrors.content ? 'border-red-500' : 'border-stone-800 focus:border-amber-600'} rounded-xl text-white placeholder:text-stone-600 focus:outline-none resize-none transition-colors`}
+              />
+              {postErrors.content && <p className="mt-1 text-xs text-red-500">{postErrors.content}</p>}
+            </div>
             <button
               type="submit"
               disabled={isSubmitting}

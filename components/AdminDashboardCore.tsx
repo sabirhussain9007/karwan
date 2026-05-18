@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Trash2, Edit3, Plus, X, MapPin, Package as PackageIcon, Users2, CheckCircle2, XCircle, Clock, Zap, Image as ImageIcon } from "lucide-react";
+import { Trash2, Edit3, Plus, X, MapPin, Package as PackageIcon, Users2, CheckCircle2, XCircle, Clock, Zap, Image as ImageIcon, LayoutDashboard } from "lucide-react";
 import Image from 'next/image';
 
 
@@ -93,6 +93,9 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
   });
   const [userForm, setUserForm] = useState({ role: "user" });
   const [applicationFilter, setApplicationFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('Pending');
+
+  const [destErrors, setDestErrors] = useState<{name?: string, country?: string, description?: string, imageUrl?: string}>({});
+  const [pkgErrors, setPkgErrors] = useState<{title?: string, description?: string, price?: string, salePrice?: string, durationDays?: string, destinations?: string, imageUrl?: string}>({});
 
   // Auth check
   useEffect(() => {
@@ -274,8 +277,20 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
     }
   };
 
+  const validateDestForm = () => {
+    const errors: any = {};
+    let isValid = true;
+    if (!destForm.name.trim()) { errors.name = "Name is required"; isValid = false; }
+    if (!destForm.country.trim()) { errors.country = "Country is required"; isValid = false; }
+    if (!destForm.description.trim()) { errors.description = "Description is required"; isValid = false; }
+    if (destForm.imageUrl && !/^(https?:\/\/|data:image\/)/.test(destForm.imageUrl)) { errors.imageUrl = "Valid URL or Data URI required"; isValid = false; }
+    setDestErrors(errors);
+    return isValid;
+  };
+
   const handleAddDestination = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateDestForm()) return;
     try {
       const res = await fetch("/api/admin/destinations", {
         method: "POST",
@@ -296,6 +311,7 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
   const handleUpdateDestination = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId) return;
+    if (!validateDestForm()) return;
     try {
       const res = await fetch("/api/admin/destinations", {
         method: "PUT",
@@ -337,8 +353,23 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
   };
 
   // Package handlers
+  const validatePkgForm = () => {
+    const errors: any = {};
+    let isValid = true;
+    if (!pkgForm.title.trim()) { errors.title = "Title is required"; isValid = false; }
+    if (!pkgForm.description.trim()) { errors.description = "Description is required"; isValid = false; }
+    if (pkgForm.price < 0) { errors.price = "Price must be >= 0"; isValid = false; }
+    if (pkgForm.salePrice < 0) { errors.salePrice = "Sale Price must be >= 0"; isValid = false; }
+    if (pkgForm.durationDays <= 0) { errors.durationDays = "Duration must be > 0"; isValid = false; }
+    if (!pkgForm.destinations.trim()) { errors.destinations = "Destinations are required"; isValid = false; }
+    if (pkgForm.imageUrl && !/^(https?:\/\/|data:image\/)/.test(pkgForm.imageUrl)) { errors.imageUrl = "Valid URL or Data URI required"; isValid = false; }
+    setPkgErrors(errors);
+    return isValid;
+  };
+
   const handleAddPackage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validatePkgForm()) return;
     try {
       const res = await fetch("/api/admin/packages", {
         method: "POST",
@@ -365,6 +396,7 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
   const handleUpdatePackage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId) return;
+    if (!validatePkgForm()) return;
     try {
       const res = await fetch("/api/admin/packages", {
         method: "PUT",
@@ -458,32 +490,73 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
   if (status === "loading") return <div className="p-8">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-7xl mx-auto p-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div>
-            <h1 className="text-5xl font-bold text-white mb-2">Admin Dashboard</h1>
-            <p className="text-slate-400">Manage services, applications, packages, and users</p>
-          </div>
-          {session?.user && (
-            <div className="flex items-center gap-4 bg-slate-800/80 p-3 pr-6 rounded-full border border-slate-700 shadow-lg">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center text-white text-xl font-bold shadow-inner">
-                {session.user.name?.charAt(0).toUpperCase() || 'A'}
+    <div className="min-h-screen bg-slate-950 font-sans">
+      {/* Top Navigation Bar */}
+      <div className="sticky top-0 z-40 w-full backdrop-blur-xl bg-slate-950/80 border-b border-slate-800 shadow-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between py-4 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-tr from-amber-500 to-orange-400 p-2 rounded-xl shadow-lg shadow-amber-500/20">
+                <LayoutDashboard className="text-stone-950 h-6 w-6" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-white font-semibold text-sm">{session.user.name || 'Admin User'}</span>
-                <span className="text-xs text-slate-400">{session.user.email}</span>
+              <div>
+                <h1 className="text-xl font-bold text-white tracking-tight">Admin Console</h1>
+                <p className="text-xs text-slate-400 font-medium">Manage operations</p>
               </div>
             </div>
-          )}
+            {session?.user && (
+              <div className="flex items-center gap-3 bg-slate-900/50 p-2 pr-4 rounded-full border border-slate-700/50 shadow-inner">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 to-orange-400 flex items-center justify-center text-stone-950 text-lg font-bold">
+                  {session.user.name?.charAt(0).toUpperCase() || 'A'}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-white font-semibold text-sm leading-tight">{session.user.name || 'Admin User'}</span>
+                  <span className="text-xs text-slate-400 leading-tight">{session.user.email}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Scrollable Tabs */}
+          <div className="flex gap-2 pb-px overflow-x-auto no-scrollbar pt-2">
+            {([
+              { key: "applications" as const, label: "All Applications", icon: Zap },
+              ...SERVICE_TYPES.map(service => ({ key: service, label: service, icon: PackageIcon })),
+              { key: "packages" as const, label: "Packages", icon: PackageIcon },
+              { key: "destinations" as const, label: "Destinations", icon: MapPin },
+              { key: "users" as const, label: "Users", icon: Users2 },
+            ] as const).map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => {
+                  setActiveTab(key);
+                  setEditingId(null);
+                  setError(null);
+                  setSuccessMsg(null);
+                  setShowModal(false);
+                  setApplicationFilter('Pending');
+                }}
+                className={`flex items-center gap-2 px-4 py-3 font-medium transition-all whitespace-nowrap text-sm border-b-2 ${
+                  activeTab === key
+                    ? "border-amber-500 text-amber-400 bg-amber-500/10 rounded-t-lg"
+                    : "border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-t-lg"
+                }`}
+              >
+                <Icon size={16} className={activeTab === key ? "text-amber-500" : "text-slate-500"} />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
 
+      {/* Main Content Area */}
+      <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 py-8">
         {/* Success Message */}
         {successMsg && (
-          <div className="mb-6 p-4 bg-green-500/20 border border-green-500 rounded-lg text-green-200 flex items-center justify-between">
+          <div className="mb-6 p-4 bg-green-500/10 border border-green-500/50 rounded-xl text-green-400 flex items-center justify-between backdrop-blur-sm">
             <span>{successMsg}</span>
-            <button onClick={() => setSuccessMsg(null)} className="text-green-300 hover:text-green-100">
+            <button onClick={() => setSuccessMsg(null)} className="text-green-400 hover:text-green-300 transition-colors">
               <X size={20} />
             </button>
           </div>
@@ -491,9 +564,9 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-200 flex items-center justify-between">
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-400 flex items-center justify-between backdrop-blur-sm">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-300 hover:text-red-100">
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300 transition-colors">
               <X size={20} />
             </button>
           </div>
@@ -502,75 +575,52 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
         {/* Stats Cards for Applications */}
         {(activeTab === "applications" || SERVICE_TYPES.includes(activeTab as ServiceType)) && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-black/20 hover:border-slate-700 transition-all">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-400 text-sm">Total Applications</p>
+                  <p className="text-slate-400 text-sm font-medium">Total Applications</p>
                   <p className="text-3xl font-bold text-white mt-2">{stats.total}</p>
                 </div>
-                <Zap className="text-blue-400" size={32} />
+                <div className="p-3 bg-blue-500/10 rounded-xl">
+                  <Zap className="text-blue-400" size={28} />
+                </div>
               </div>
             </div>
-            <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-black/20 hover:border-slate-700 transition-all">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-400 text-sm">Pending</p>
+                  <p className="text-slate-400 text-sm font-medium">Pending</p>
                   <p className="text-3xl font-bold text-yellow-400 mt-2">{stats.pending}</p>
                 </div>
-                <Clock className="text-yellow-400" size={32} />
+                <div className="p-3 bg-yellow-500/10 rounded-xl">
+                  <Clock className="text-yellow-400" size={28} />
+                </div>
               </div>
             </div>
-            <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-black/20 hover:border-slate-700 transition-all">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-400 text-sm">Approved</p>
+                  <p className="text-slate-400 text-sm font-medium">Approved</p>
                   <p className="text-3xl font-bold text-green-400 mt-2">{stats.approved}</p>
                 </div>
-                <CheckCircle2 className="text-green-400" size={32} />
+                <div className="p-3 bg-green-500/10 rounded-xl">
+                  <CheckCircle2 className="text-green-400" size={28} />
+                </div>
               </div>
             </div>
-            <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-black/20 hover:border-slate-700 transition-all">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-400 text-sm">Rejected</p>
+                  <p className="text-slate-400 text-sm font-medium">Rejected</p>
                   <p className="text-3xl font-bold text-red-400 mt-2">{stats.rejected}</p>
                 </div>
-                <XCircle className="text-red-400" size={32} />
+                <div className="p-3 bg-red-500/10 rounded-xl">
+                  <XCircle className="text-red-400" size={28} />
+                </div>
               </div>
             </div>
           </div>
         )}
-
-        {/* Tabs */}
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2 flex-wrap">
-          {([
-            { key: "applications" as const, label: "All Applications", icon: Zap },
-            ...SERVICE_TYPES.map(service => ({ key: service, label: service, icon: PackageIcon })),
-            { key: "packages" as const, label: "Packages", icon: PackageIcon },
-            { key: "destinations" as const, label: "Destinations", icon: MapPin },
-            { key: "users" as const, label: "Users", icon: Users2 },
-          ] as const).map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => {
-                setActiveTab(key);
-                setEditingId(null);
-                setError(null);
-                setSuccessMsg(null);
-                setShowModal(false);
-                setApplicationFilter('Pending');
-              }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap text-sm ${
-                activeTab === key
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-                  : "bg-slate-700/50 text-slate-300 hover:bg-slate-600/50"
-              }`}
-            >
-              <Icon size={16} />
-              {label}
-            </button>
-          ))}
-        </div>
 
         {/* Content */}
         <div className="space-y-6">
@@ -600,7 +650,7 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
                   {filteredApplications.map((app) => (
                     <div
                       key={app._id}
-                      className="bg-slate-700/50 border border-slate-600 rounded-lg p-6 hover:border-blue-500 transition"
+                      className="bg-slate-700/50 border border-slate-600 rounded-lg p-4 hover:border-blue-500 transition"
                     >
                       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                         <div className="flex-1">
@@ -757,7 +807,7 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
                   {packages.map((pkg) => (
                     <div
                       key={pkg._id}
-                      className="bg-slate-700/50 border border-slate-600 rounded-lg p-6 hover:border-blue-500 transition"
+                      className="bg-slate-700/50 border border-slate-600 rounded-lg p-4 hover:border-blue-500 transition"
                     >
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start mb-4">
                         <div className="md:col-span-2">
@@ -968,36 +1018,46 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
             >
               {activeTab === "destinations" && (
                 <>
-                  <input
-                    type="text"
-                    placeholder="Destination name"
-                    value={destForm.name}
-                    onChange={(e) => setDestForm({ ...destForm, name: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none transition"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Country"
-                    value={destForm.country}
-                    onChange={(e) => setDestForm({ ...destForm, country: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none transition"
-                  />
-                  <textarea
-                    placeholder="Description"
-                    value={destForm.description}
-                    onChange={(e) => setDestForm({ ...destForm, description: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none transition h-24"
-                  />
-                  <div className="flex gap-2">
+                  <div>
                     <input
-                      type="url"
-                      placeholder="Image URL"
-                      value={destForm.imageUrl}
-                      onChange={(e) => setDestForm({ ...destForm, imageUrl: e.target.value })}
-                      className="flex-1 px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none transition"
+                      type="text"
+                      placeholder="Destination name"
+                      value={destForm.name}
+                      onChange={(e) => setDestForm({ ...destForm, name: e.target.value })}
+                      required
+                      className={`w-full px-4 py-3 bg-slate-700 border ${destErrors.name ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'} rounded-lg text-white placeholder-slate-500 focus:outline-none transition`}
                     />
+                    {destErrors.name && <p className="mt-1 text-xs text-red-500">{destErrors.name}</p>}
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Country"
+                      value={destForm.country}
+                      onChange={(e) => setDestForm({ ...destForm, country: e.target.value })}
+                      required
+                      className={`w-full px-4 py-3 bg-slate-700 border ${destErrors.country ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'} rounded-lg text-white placeholder-slate-500 focus:outline-none transition`}
+                    />
+                    {destErrors.country && <p className="mt-1 text-xs text-red-500">{destErrors.country}</p>}
+                  </div>
+                  <div>
+                    <textarea
+                      placeholder="Description"
+                      value={destForm.description}
+                      onChange={(e) => setDestForm({ ...destForm, description: e.target.value })}
+                      className={`w-full px-4 py-3 bg-slate-700 border ${destErrors.description ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'} rounded-lg text-white placeholder-slate-500 focus:outline-none transition h-24`}
+                    />
+                    {destErrors.description && <p className="mt-1 text-xs text-red-500">{destErrors.description}</p>}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="Image URL"
+                        value={destForm.imageUrl}
+                        onChange={(e) => setDestForm({ ...destForm, imageUrl: e.target.value })}
+                        className={`flex-1 px-4 py-3 bg-slate-700 border ${destErrors.imageUrl ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'} rounded-lg text-white placeholder-slate-500 focus:outline-none transition`}
+                      />
                     <div className="relative">
                       <input
                         type="file"
@@ -1015,7 +1075,9 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
                       </label>
                     </div>
                   </div>
-                  {destForm.imageUrl && (
+                  {destErrors.imageUrl && <p className="mt-1 text-xs text-red-500">{destErrors.imageUrl}</p>}
+                  </div>
+                  {destForm.imageUrl && !destErrors.imageUrl && (
                     <div className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-600">
                       <Image width={800} height={800} src={destForm.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                       <button
@@ -1032,77 +1094,98 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
 
               {activeTab === "packages" && (
                 <>
-                  <input
-                    type="text"
-                    placeholder="Package title"
-                    value={pkgForm.title}
-                    onChange={(e) => setPkgForm({ ...pkgForm, title: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none transition"
-                  />
-                  <textarea
-                    placeholder="Description"
-                    value={pkgForm.description}
-                    onChange={(e) => setPkgForm({ ...pkgForm, description: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none transition h-24"
-                  />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div>
                     <input
-                      type="number"
-                      placeholder="Price"
-                      value={pkgForm.price}
-                      onChange={(e) => setPkgForm({ ...pkgForm, price: parseFloat(e.target.value) })}
+                      type="text"
+                      placeholder="Package title"
+                      value={pkgForm.title}
+                      onChange={(e) => setPkgForm({ ...pkgForm, title: e.target.value })}
                       required
-                      className="px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none transition"
+                      className={`w-full px-4 py-3 bg-slate-700 border ${pkgErrors.title ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'} rounded-lg text-white placeholder-slate-500 focus:outline-none transition`}
                     />
-                    <input
-                      type="number"
-                      placeholder="Sale Price"
-                      value={pkgForm.salePrice}
-                      onChange={(e) => setPkgForm({ ...pkgForm, salePrice: parseFloat(e.target.value) })}
-                      className="px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none transition"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Duration (days)"
-                      value={pkgForm.durationDays}
-                      onChange={(e) => setPkgForm({ ...pkgForm, durationDays: parseInt(e.target.value) })}
-                      required
-                      className="px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none transition"
-                    />
-                    <select
-                      value={pkgForm.category}
-                      onChange={(e) => setPkgForm({ ...pkgForm, category: e.target.value })}
-                      className="px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none transition"
-                    >
-                      <option>Tour</option>
-                      <option>Accommodation</option>
-                      <option>Car Rental</option>
-                      <option>Umrah</option>
-                      <option>Hajj</option>
-                      <option>International Tours</option>
-                      <option>Domestic Tours</option>
-                      <option>Visa Services</option>
-                      <option>Ticketing</option>
-                    </select>
+                    {pkgErrors.title && <p className="mt-1 text-xs text-red-500">{pkgErrors.title}</p>}
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Destinations (comma separated)"
-                    value={pkgForm.destinations}
-                    onChange={(e) => setPkgForm({ ...pkgForm, destinations: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none transition"
-                  />
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      placeholder="Image URL"
-                      value={pkgForm.imageUrl}
-                      onChange={(e) => setPkgForm({ ...pkgForm, imageUrl: e.target.value })}
-                      className="flex-1 px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none transition"
+                  <div>
+                    <textarea
+                      placeholder="Description"
+                      value={pkgForm.description}
+                      onChange={(e) => setPkgForm({ ...pkgForm, description: e.target.value })}
+                      required
+                      className={`w-full px-4 py-3 bg-slate-700 border ${pkgErrors.description ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'} rounded-lg text-white placeholder-slate-500 focus:outline-none transition h-24`}
                     />
+                    {pkgErrors.description && <p className="mt-1 text-xs text-red-500">{pkgErrors.description}</p>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <input
+                        type="number"
+                        placeholder="Price"
+                        value={pkgForm.price}
+                        onChange={(e) => setPkgForm({ ...pkgForm, price: parseFloat(e.target.value) })}
+                        required
+                        className={`w-full px-4 py-3 bg-slate-700 border ${pkgErrors.price ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'} rounded-lg text-white placeholder-slate-500 focus:outline-none transition`}
+                      />
+                      {pkgErrors.price && <p className="mt-1 text-xs text-red-500">{pkgErrors.price}</p>}
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        placeholder="Sale Price"
+                        value={pkgForm.salePrice}
+                        onChange={(e) => setPkgForm({ ...pkgForm, salePrice: parseFloat(e.target.value) })}
+                        className={`w-full px-4 py-3 bg-slate-700 border ${pkgErrors.salePrice ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'} rounded-lg text-white placeholder-slate-500 focus:outline-none transition`}
+                      />
+                      {pkgErrors.salePrice && <p className="mt-1 text-xs text-red-500">{pkgErrors.salePrice}</p>}
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        placeholder="Duration (days)"
+                        value={pkgForm.durationDays}
+                        onChange={(e) => setPkgForm({ ...pkgForm, durationDays: parseInt(e.target.value) })}
+                        required
+                        className={`w-full px-4 py-3 bg-slate-700 border ${pkgErrors.durationDays ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'} rounded-lg text-white placeholder-slate-500 focus:outline-none transition`}
+                      />
+                      {pkgErrors.durationDays && <p className="mt-1 text-xs text-red-500">{pkgErrors.durationDays}</p>}
+                    </div>
+                    <div>
+                      <select
+                        value={pkgForm.category}
+                        onChange={(e) => setPkgForm({ ...pkgForm, category: e.target.value })}
+                        className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none transition"
+                      >
+                        <option>Tour</option>
+                        <option>Accommodation</option>
+                        <option>Car Rental</option>
+                        <option>Umrah</option>
+                        <option>Hajj</option>
+                        <option>International Tours</option>
+                        <option>Domestic Tours</option>
+                        <option>Visa Services</option>
+                        <option>Ticketing</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Destinations (comma separated)"
+                      value={pkgForm.destinations}
+                      onChange={(e) => setPkgForm({ ...pkgForm, destinations: e.target.value })}
+                      required
+                      className={`w-full px-4 py-3 bg-slate-700 border ${pkgErrors.destinations ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'} rounded-lg text-white placeholder-slate-500 focus:outline-none transition`}
+                    />
+                    {pkgErrors.destinations && <p className="mt-1 text-xs text-red-500">{pkgErrors.destinations}</p>}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="Image URL"
+                        value={pkgForm.imageUrl}
+                        onChange={(e) => setPkgForm({ ...pkgForm, imageUrl: e.target.value })}
+                        className={`flex-1 px-4 py-3 bg-slate-700 border ${pkgErrors.imageUrl ? 'border-red-500' : 'border-slate-600 focus:border-blue-500'} rounded-lg text-white placeholder-slate-500 focus:outline-none transition`}
+                      />
                     <div className="relative">
                       <input
                         type="file"
@@ -1120,7 +1203,9 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
                       </label>
                     </div>
                   </div>
-                  {pkgForm.imageUrl && (
+                  {pkgErrors.imageUrl && <p className="mt-1 text-xs text-red-500">{pkgErrors.imageUrl}</p>}
+                  </div>
+                  {pkgForm.imageUrl && !pkgErrors.imageUrl && (
                     <div className="relative w-full h-32 rounded-lg overflow-hidden border border-slate-600">
                       <Image width={800} height={800} src={pkgForm.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                       <button

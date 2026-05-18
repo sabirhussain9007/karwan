@@ -42,6 +42,7 @@ export default function ApplicationForm({
   });
 
   const [passengers, setPassengers] = useState<{ name: string; relation: string; dob: string; passport: string }[]>([]);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -77,8 +78,49 @@ export default function ApplicationForm({
     setPassengers(passengers.filter((_, i) => i !== idx));
   };
 
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    let isValid = true;
+
+    if (!formData.fullName.trim()) { errors.fullName = "Full Name is required"; isValid = false; }
+    if (!formData.email.trim()) { errors.email = "Email is required"; isValid = false; } 
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { errors.email = "Invalid email format"; isValid = false; }
+    if (!formData.phone.trim()) { errors.phone = "Phone is required"; isValid = false; }
+    else if (!/^\\+?[\\d\\s-]{10,}$/.test(formData.phone)) { errors.phone = "Invalid phone number"; isValid = false; }
+    if (!formData.nationality.trim()) { errors.nationality = "Nationality is required"; isValid = false; }
+    if (!formData.passport.trim()) { errors.passport = "Passport is required"; isValid = false; }
+    if (!formData.dateOfBirth) { errors.dateOfBirth = "Date of Birth is required"; isValid = false; }
+    
+    if (formData.numberOfPassengers < 1) { errors.numberOfPassengers = "Must be at least 1 passenger"; isValid = false; }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (formData.travelDate) {
+      const travelDate = new Date(formData.travelDate);
+      if (travelDate < today) { errors.travelDate = "Cannot be in the past"; isValid = false; }
+    } else { errors.travelDate = "Travel date is required"; isValid = false; }
+
+    if (formData.returnDate && formData.travelDate) {
+      const returnDate = new Date(formData.returnDate);
+      const travelDate = new Date(formData.travelDate);
+      if (returnDate < travelDate) { errors.returnDate = "Must be after travel date"; isValid = false; }
+    }
+
+    passengers.forEach((p, idx) => {
+      if (!p.name.trim()) { errors[`passenger_${idx}_name`] = "Required"; isValid = false; }
+      if (!p.relation.trim()) { errors[`passenger_${idx}_relation`] = "Required"; isValid = false; }
+      if (!p.dob) { errors[`passenger_${idx}_dob`] = "Required"; isValid = false; }
+      if (!p.passport.trim()) { errors[`passenger_${idx}_passport`] = "Required"; isValid = false; }
+    });
+
+    setValidationErrors(errors);
+    return isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
     setLoading(true);
     setError("");
 
@@ -162,60 +204,78 @@ export default function ApplicationForm({
             <h2 className="text-xl font-bold text-white mb-4">Personal Information</h2>
             
             <div className="grid md:grid-cols-2 gap-4">
-              <input
-                type="text"
-                name="fullName"
-                placeholder="Full Name"
-                value={formData.fullName}
-                onChange={handleInputChange}
-                required
-                className="px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-              />
-              <input
-                type="email"
-                name="email"
-                placeholder="Email"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-                className="px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-              />
-              <input
-                type="tel"
-                name="phone"
-                placeholder="Phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                required
-                className="px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-              />
-              <input
-                type="text"
-                name="nationality"
-                placeholder="Nationality"
-                value={formData.nationality}
-                onChange={handleInputChange}
-                required
-                className="px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-              />
-              <input
-                type="text"
-                name="passport"
-                placeholder="Passport Number"
-                value={formData.passport}
-                onChange={handleInputChange}
-                required
-                className="px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-              />
-              <input
-                type="date"
-                name="dateOfBirth"
-                placeholder="Date of Birth"
-                value={formData.dateOfBirth}
-                onChange={handleInputChange}
-                required
-                className="px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-              />
+              <div>
+                <input
+                  type="text"
+                  name="fullName"
+                  placeholder="Full Name"
+                  value={formData.fullName}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.fullName ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none`}
+                />
+                {validationErrors.fullName && <p className="mt-1 text-xs text-red-400">{validationErrors.fullName}</p>}
+              </div>
+              <div>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.email ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none`}
+                />
+                {validationErrors.email && <p className="mt-1 text-xs text-red-400">{validationErrors.email}</p>}
+              </div>
+              <div>
+                <input
+                  type="tel"
+                  name="phone"
+                  placeholder="Phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.phone ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none`}
+                />
+                {validationErrors.phone && <p className="mt-1 text-xs text-red-400">{validationErrors.phone}</p>}
+              </div>
+              <div>
+                <input
+                  type="text"
+                  name="nationality"
+                  placeholder="Nationality"
+                  value={formData.nationality}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.nationality ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none`}
+                />
+                {validationErrors.nationality && <p className="mt-1 text-xs text-red-400">{validationErrors.nationality}</p>}
+              </div>
+              <div>
+                <input
+                  type="text"
+                  name="passport"
+                  placeholder="Passport Number"
+                  value={formData.passport}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.passport ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none`}
+                />
+                {validationErrors.passport && <p className="mt-1 text-xs text-red-400">{validationErrors.passport}</p>}
+              </div>
+              <div>
+                <input
+                  type="date"
+                  name="dateOfBirth"
+                  placeholder="Date of Birth"
+                  value={formData.dateOfBirth}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.dateOfBirth ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none [color-scheme:dark]`}
+                />
+                {validationErrors.dateOfBirth && <p className="mt-1 text-xs text-red-400">{validationErrors.dateOfBirth}</p>}
+              </div>
             </div>
           </div>
 
@@ -224,33 +284,42 @@ export default function ApplicationForm({
             <h2 className="text-xl font-bold text-white mb-4">Travel Details</h2>
             
             <div className="grid md:grid-cols-2 gap-4">
-              <input
-                type="date"
-                name="travelDate"
-                placeholder="Travel Date"
-                value={formData.travelDate}
-                onChange={handleInputChange}
-                required
-                className="px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-              />
-              <input
-                type="date"
-                name="returnDate"
-                placeholder="Return Date"
-                value={formData.returnDate}
-                onChange={handleInputChange}
-                className="px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
-              />
-              <select
-                name="numberOfPassengers"
-                value={formData.numberOfPassengers}
-                onChange={handleInputChange}
-                className="px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-              >
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                  <option key={n} value={n}>{n} Passenger{n > 1 ? 's' : ''}</option>
-                ))}
-              </select>
+              <div>
+                <input
+                  type="date"
+                  name="travelDate"
+                  placeholder="Travel Date"
+                  value={formData.travelDate}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.travelDate ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none [color-scheme:dark]`}
+                />
+                {validationErrors.travelDate && <p className="mt-1 text-xs text-red-400">{validationErrors.travelDate}</p>}
+              </div>
+              <div>
+                <input
+                  type="date"
+                  name="returnDate"
+                  placeholder="Return Date"
+                  value={formData.returnDate}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.returnDate ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none [color-scheme:dark]`}
+                />
+                {validationErrors.returnDate && <p className="mt-1 text-xs text-red-400">{validationErrors.returnDate}</p>}
+              </div>
+              <div>
+                <select
+                  name="numberOfPassengers"
+                  value={formData.numberOfPassengers}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.numberOfPassengers ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white focus:outline-none`}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                    <option key={n} value={n}>{n} Passenger{n > 1 ? 's' : ''}</option>
+                  ))}
+                </select>
+                {validationErrors.numberOfPassengers && <p className="mt-1 text-xs text-red-400">{validationErrors.numberOfPassengers}</p>}
+              </div>
               <select
                 name="mealPlan"
                 value={formData.mealPlan}
@@ -326,38 +395,50 @@ export default function ApplicationForm({
                     </button>
                   </div>
                   <div className="grid md:grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      placeholder="Full Name"
-                      value={p.name}
-                      onChange={(e) => handlePassengerChange(idx, 'name', e.target.value)}
-                      required
-                      className="px-3 py-2 bg-slate-500 border border-slate-400 rounded text-white placeholder-slate-300 focus:border-blue-500 focus:outline-none text-sm"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Relation"
-                      value={p.relation}
-                      onChange={(e) => handlePassengerChange(idx, 'relation', e.target.value)}
-                      required
-                      className="px-3 py-2 bg-slate-500 border border-slate-400 rounded text-white placeholder-slate-300 focus:border-blue-500 focus:outline-none text-sm"
-                    />
-                    <input
-                      type="date"
-                      placeholder="Date of Birth"
-                      value={p.dob}
-                      onChange={(e) => handlePassengerChange(idx, 'dob', e.target.value)}
-                      required
-                      className="px-3 py-2 bg-slate-500 border border-slate-400 rounded text-white placeholder-slate-300 focus:border-blue-500 focus:outline-none text-sm"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Passport"
-                      value={p.passport}
-                      onChange={(e) => handlePassengerChange(idx, 'passport', e.target.value)}
-                      required
-                      className="px-3 py-2 bg-slate-500 border border-slate-400 rounded text-white placeholder-slate-300 focus:border-blue-500 focus:outline-none text-sm"
-                    />
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Full Name"
+                        value={p.name}
+                        onChange={(e) => handlePassengerChange(idx, 'name', e.target.value)}
+                        required
+                        className={`w-full px-3 py-2 bg-slate-500 border ${validationErrors[`passenger_${idx}_name`] ? 'border-red-400' : 'border-slate-400 focus:border-blue-500'} rounded text-white placeholder-slate-300 focus:outline-none text-sm`}
+                      />
+                      {validationErrors[`passenger_${idx}_name`] && <p className="mt-1 text-xs text-red-400">{validationErrors[`passenger_${idx}_name`]}</p>}
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Relation"
+                        value={p.relation}
+                        onChange={(e) => handlePassengerChange(idx, 'relation', e.target.value)}
+                        required
+                        className={`w-full px-3 py-2 bg-slate-500 border ${validationErrors[`passenger_${idx}_relation`] ? 'border-red-400' : 'border-slate-400 focus:border-blue-500'} rounded text-white placeholder-slate-300 focus:outline-none text-sm`}
+                      />
+                      {validationErrors[`passenger_${idx}_relation`] && <p className="mt-1 text-xs text-red-400">{validationErrors[`passenger_${idx}_relation`]}</p>}
+                    </div>
+                    <div>
+                      <input
+                        type="date"
+                        placeholder="Date of Birth"
+                        value={p.dob}
+                        onChange={(e) => handlePassengerChange(idx, 'dob', e.target.value)}
+                        required
+                        className={`w-full px-3 py-2 bg-slate-500 border ${validationErrors[`passenger_${idx}_dob`] ? 'border-red-400' : 'border-slate-400 focus:border-blue-500'} rounded text-white placeholder-slate-300 focus:outline-none text-sm [color-scheme:dark]`}
+                      />
+                      {validationErrors[`passenger_${idx}_dob`] && <p className="mt-1 text-xs text-red-400">{validationErrors[`passenger_${idx}_dob`]}</p>}
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Passport"
+                        value={p.passport}
+                        onChange={(e) => handlePassengerChange(idx, 'passport', e.target.value)}
+                        required
+                        className={`w-full px-3 py-2 bg-slate-500 border ${validationErrors[`passenger_${idx}_passport`] ? 'border-red-400' : 'border-slate-400 focus:border-blue-500'} rounded text-white placeholder-slate-300 focus:outline-none text-sm`}
+                      />
+                      {validationErrors[`passenger_${idx}_passport`] && <p className="mt-1 text-xs text-red-400">{validationErrors[`passenger_${idx}_passport`]}</p>}
+                    </div>
                   </div>
                 </div>
               ))}

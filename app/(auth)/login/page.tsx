@@ -10,11 +10,35 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [validationErrors, setValidationErrors] = useState<{email?: string, password?: string}>({});
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  const validateForm = () => {
+    const errors: {email?: string, password?: string} = {};
+    let isValid = true;
+
+    if (!email.trim()) {
+      errors.email = "Email is required";
+      isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errors.email = "Invalid email format";
+      isValid = false;
+    }
+
+    if (!password) {
+      errors.password = "Password is required";
+      isValid = false;
+    }
+
+    setValidationErrors(errors);
+    return isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
+    
     setIsLoading(true);
     setError("");
 
@@ -89,10 +113,11 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                  className={`appearance-none block w-full pl-10 px-3 py-2 border ${validationErrors.email ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-emerald-500 focus:border-emerald-500'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm`}
                   placeholder="you@example.com"
                 />
               </div>
+              {validationErrors.email && <p className="mt-2 text-sm text-red-600">{validationErrors.email}</p>}
             </div>
 
             <div>
@@ -114,10 +139,11 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                  className={`appearance-none block w-full pl-10 px-3 py-2 border ${validationErrors.password ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-emerald-500 focus:border-emerald-500'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm`}
                   placeholder="••••••••"
                 />
               </div>
+              {validationErrors.password && <p className="mt-2 text-sm text-red-600">{validationErrors.password}</p>}
             </div>
 
             <div>

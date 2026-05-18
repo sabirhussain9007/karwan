@@ -83,6 +83,10 @@ export default function UserDashboard() {
     travelPreferences: "",
   });
 
+  const [bookingErrors, setBookingErrors] = useState<{package?: string, numberOfGuests?: string, travelDate?: string, totalPrice?: string}>({});
+  const [reviewErrors, setReviewErrors] = useState<{package?: string, comment?: string}>({});
+  const [profileErrors, setProfileErrors] = useState<{name?: string, avatar?: string}>({});
+
   // Auth check
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -151,8 +155,20 @@ export default function UserDashboard() {
   };
 
   // Booking handlers
+  const validateBooking = () => {
+    const errors: any = {};
+    let isValid = true;
+    if (!bookingForm.package.trim()) { errors.package = "Package name is required"; isValid = false; }
+    if (bookingForm.numberOfGuests < 1) { errors.numberOfGuests = "Must be at least 1"; isValid = false; }
+    if (!bookingForm.travelDate) { errors.travelDate = "Travel date is required"; isValid = false; }
+    if (bookingForm.totalPrice < 0) { errors.totalPrice = "Price cannot be negative"; isValid = false; }
+    setBookingErrors(errors);
+    return isValid;
+  };
+
   const handleAddBooking = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateBooking()) return;
     try {
       const res = await fetch("/api/user/bookings", {
         method: "POST",
@@ -170,6 +186,7 @@ export default function UserDashboard() {
 
   const handleUpdateBooking = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateBooking()) return;
     if (!editingId) return;
     try {
       const res = await fetch("/api/user/bookings", {
@@ -210,8 +227,18 @@ export default function UserDashboard() {
   };
 
   // Review handlers
+  const validateReview = () => {
+    const errors: any = {};
+    let isValid = true;
+    if (!reviewForm.package.trim()) { errors.package = "Package name is required"; isValid = false; }
+    if (!reviewForm.comment.trim()) { errors.comment = "Comment is required"; isValid = false; }
+    setReviewErrors(errors);
+    return isValid;
+  };
+
   const handleAddReview = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateReview()) return;
     try {
       const res = await fetch("/api/user/reviews", {
         method: "POST",
@@ -229,6 +256,7 @@ export default function UserDashboard() {
 
   const handleUpdateReview = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateReview()) return;
     if (!editingId) return;
     try {
       const res = await fetch("/api/user/reviews", {
@@ -268,8 +296,18 @@ export default function UserDashboard() {
   };
 
   // Profile handler
+  const validateProfile = () => {
+    const errors: any = {};
+    let isValid = true;
+    if (!profileForm.name.trim()) { errors.name = "Name is required"; isValid = false; }
+    if (profileForm.avatar && !/^(https?:\/\/)/.test(profileForm.avatar)) { errors.avatar = "Must be a valid URL"; isValid = false; }
+    setProfileErrors(errors);
+    return isValid;
+  };
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateProfile()) return;
     try {
       const res = await fetch("/api/user/profile", {
         method: "PUT",
@@ -519,37 +557,49 @@ export default function UserDashboard() {
               {editingId ? "Edit Booking" : "Add Booking"}
             </h3>
             <form onSubmit={editingId ? handleUpdateBooking : handleAddBooking} className="space-y-4">
-              <input
-                type="text"
-                placeholder="Package name"
-                value={bookingForm.package}
-                onChange={(e) => setBookingForm({ ...bookingForm, package: e.target.value })}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
-              <input
-                type="number"
-                placeholder="Number of guests"
-                value={bookingForm.numberOfGuests}
-                onChange={(e) => setBookingForm({ ...bookingForm, numberOfGuests: parseInt(e.target.value) })}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
-              <input
-                type="date"
-                value={bookingForm.travelDate}
-                onChange={(e) => setBookingForm({ ...bookingForm, travelDate: e.target.value })}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
-              <input
-                type="number"
-                placeholder="Total price"
-                value={bookingForm.totalPrice}
-                onChange={(e) => setBookingForm({ ...bookingForm, totalPrice: parseFloat(e.target.value) })}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
+              <div>
+                <input
+                  type="text"
+                  placeholder="Package name"
+                  value={bookingForm.package}
+                  onChange={(e) => setBookingForm({ ...bookingForm, package: e.target.value })}
+                  required
+                  className={`w-full px-4 py-2 border ${bookingErrors.package ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
+                />
+                {bookingErrors.package && <p className="mt-1 text-xs text-red-500">{bookingErrors.package}</p>}
+              </div>
+              <div>
+                <input
+                  type="number"
+                  placeholder="Number of guests"
+                  value={bookingForm.numberOfGuests}
+                  onChange={(e) => setBookingForm({ ...bookingForm, numberOfGuests: parseInt(e.target.value) })}
+                  required
+                  className={`w-full px-4 py-2 border ${bookingErrors.numberOfGuests ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
+                />
+                {bookingErrors.numberOfGuests && <p className="mt-1 text-xs text-red-500">{bookingErrors.numberOfGuests}</p>}
+              </div>
+              <div>
+                <input
+                  type="date"
+                  value={bookingForm.travelDate}
+                  onChange={(e) => setBookingForm({ ...bookingForm, travelDate: e.target.value })}
+                  required
+                  className={`w-full px-4 py-2 border ${bookingErrors.travelDate ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
+                />
+                {bookingErrors.travelDate && <p className="mt-1 text-xs text-red-500">{bookingErrors.travelDate}</p>}
+              </div>
+              <div>
+                <input
+                  type="number"
+                  placeholder="Total price"
+                  value={bookingForm.totalPrice}
+                  onChange={(e) => setBookingForm({ ...bookingForm, totalPrice: parseFloat(e.target.value) })}
+                  required
+                  className={`w-full px-4 py-2 border ${bookingErrors.totalPrice ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
+                />
+                {bookingErrors.totalPrice && <p className="mt-1 text-xs text-red-500">{bookingErrors.totalPrice}</p>}
+              </div>
               <button
                 type="submit"
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -569,14 +619,17 @@ export default function UserDashboard() {
               {editingId ? "Edit Review" : "Add Review"}
             </h3>
             <form onSubmit={editingId ? handleUpdateReview : handleAddReview} className="space-y-4">
-              <input
-                type="text"
-                placeholder="Package name"
-                value={reviewForm.package}
-                onChange={(e) => setReviewForm({ ...reviewForm, package: e.target.value })}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
+              <div>
+                <input
+                  type="text"
+                  placeholder="Package name"
+                  value={reviewForm.package}
+                  onChange={(e) => setReviewForm({ ...reviewForm, package: e.target.value })}
+                  required
+                  className={`w-full px-4 py-2 border ${reviewErrors.package ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
+                />
+                {reviewErrors.package && <p className="mt-1 text-xs text-red-500">{reviewErrors.package}</p>}
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Rating</label>
                 <select
@@ -591,13 +644,16 @@ export default function UserDashboard() {
                   ))}
                 </select>
               </div>
-              <textarea
-                placeholder="Write your review..."
-                value={reviewForm.comment}
-                onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg h-24"
-              />
+              <div>
+                <textarea
+                  placeholder="Write your review..."
+                  value={reviewForm.comment}
+                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                  required
+                  className={`w-full px-4 py-2 border ${reviewErrors.comment ? 'border-red-400' : 'border-gray-300'} rounded-lg h-24`}
+                />
+                {reviewErrors.comment && <p className="mt-1 text-xs text-red-500">{reviewErrors.comment}</p>}
+              </div>
               <button
                 type="submit"
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -615,27 +671,33 @@ export default function UserDashboard() {
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <h3 className="text-2xl font-bold mb-4">Edit Profile</h3>
             <form onSubmit={handleUpdateProfile} className="space-y-4">
-              <input
-                type="text"
-                placeholder="Name"
-                value={profileForm.name}
-                onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
+              <div>
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={profileForm.name}
+                  onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                  required
+                  className={`w-full px-4 py-2 border ${profileErrors.name ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
+                />
+                {profileErrors.name && <p className="mt-1 text-xs text-red-500">{profileErrors.name}</p>}
+              </div>
               <textarea
                 placeholder="Bio"
                 value={profileForm.bio}
                 onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg h-20"
               />
-              <input
-                type="url"
-                placeholder="Avatar URL"
-                value={profileForm.avatar}
-                onChange={(e) => setProfileForm({ ...profileForm, avatar: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
+              <div>
+                <input
+                  type="url"
+                  placeholder="Avatar URL"
+                  value={profileForm.avatar}
+                  onChange={(e) => setProfileForm({ ...profileForm, avatar: e.target.value })}
+                  className={`w-full px-4 py-2 border ${profileErrors.avatar ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
+                />
+                {profileErrors.avatar && <p className="mt-1 text-xs text-red-500">{profileErrors.avatar}</p>}
+              </div>
               <input
                 type="text"
                 placeholder="Travel preferences (comma separated)"

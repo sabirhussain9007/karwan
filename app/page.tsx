@@ -46,6 +46,7 @@ const Home = () => {
     travelDate: '',
     specialRequests: ''
   });
+  const [validationErrors, setValidationErrors] = useState<{fullName?: string, email?: string, phone?: string, numberOfPassengers?: string, travelDate?: string}>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
@@ -68,8 +69,53 @@ const Home = () => {
     setIsModalOpen(true);
   };
 
+  const validateForm = () => {
+    const errors: {fullName?: string, email?: string, phone?: string, numberOfPassengers?: string, travelDate?: string} = {};
+    let isValid = true;
+
+    if (!formData.fullName.trim()) {
+      errors.fullName = "Full Name is required";
+      isValid = false;
+    }
+
+    if (!formData.email.trim()) {
+      errors.email = "Email is required";
+      isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = "Invalid email format";
+      isValid = false;
+    }
+
+    if (!formData.phone.trim()) {
+      errors.phone = "Phone is required";
+      isValid = false;
+    } else if (!/^\\+?[\\d\\s-]{10,}$/.test(formData.phone)) {
+      errors.phone = "Invalid phone number";
+      isValid = false;
+    }
+
+    if (formData.numberOfPassengers < 1) {
+      errors.numberOfPassengers = "Must be at least 1 passenger";
+      isValid = false;
+    }
+
+    if (formData.travelDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selectedDate = new Date(formData.travelDate);
+      if (selectedDate < today) {
+        errors.travelDate = "Travel date cannot be in the past";
+        isValid = false;
+      }
+    }
+
+    setValidationErrors(errors);
+    return isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
     setIsSubmitting(true);
     
     try {
@@ -361,8 +407,9 @@ const Home = () => {
                       required
                       value={formData.fullName}
                       onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                      className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                      className={`w-full bg-stone-950 border ${validationErrors.fullName ? 'border-red-500 focus:border-red-400' : 'border-stone-800 focus:border-amber-500'} rounded-xl px-4 py-3 text-white focus:outline-none transition-colors`}
                     />
+                    {validationErrors.fullName && <p className="mt-1 text-xs text-red-500">{validationErrors.fullName}</p>}
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -373,8 +420,9 @@ const Home = () => {
                         required
                         value={formData.email}
                         onChange={(e) => setFormData({...formData, email: e.target.value})}
-                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                        className={`w-full bg-stone-950 border ${validationErrors.email ? 'border-red-500 focus:border-red-400' : 'border-stone-800 focus:border-amber-500'} rounded-xl px-4 py-3 text-white focus:outline-none transition-colors`}
                       />
+                      {validationErrors.email && <p className="mt-1 text-xs text-red-500">{validationErrors.email}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-stone-400 mb-1">Phone</label>
@@ -383,8 +431,9 @@ const Home = () => {
                         required
                         value={formData.phone}
                         onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                        className={`w-full bg-stone-950 border ${validationErrors.phone ? 'border-red-500 focus:border-red-400' : 'border-stone-800 focus:border-amber-500'} rounded-xl px-4 py-3 text-white focus:outline-none transition-colors`}
                       />
+                      {validationErrors.phone && <p className="mt-1 text-xs text-red-500">{validationErrors.phone}</p>}
                     </div>
                   </div>
                   
@@ -397,8 +446,9 @@ const Home = () => {
                         required
                         value={formData.numberOfPassengers}
                         onChange={(e) => setFormData({...formData, numberOfPassengers: parseInt(e.target.value)})}
-                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                        className={`w-full bg-stone-950 border ${validationErrors.numberOfPassengers ? 'border-red-500 focus:border-red-400' : 'border-stone-800 focus:border-amber-500'} rounded-xl px-4 py-3 text-white focus:outline-none transition-colors`}
                       />
+                      {validationErrors.numberOfPassengers && <p className="mt-1 text-xs text-red-500">{validationErrors.numberOfPassengers}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-stone-400 mb-1">Estimated Travel Date</label>
@@ -406,8 +456,9 @@ const Home = () => {
                         type="date" 
                         value={formData.travelDate}
                         onChange={(e) => setFormData({...formData, travelDate: e.target.value})}
-                        className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-colors [color-scheme:dark]"
+                        className={`w-full bg-stone-950 border ${validationErrors.travelDate ? 'border-red-500 focus:border-red-400' : 'border-stone-800 focus:border-amber-500'} rounded-xl px-4 py-3 text-white focus:outline-none transition-colors [color-scheme:dark]`}
                       />
+                      {validationErrors.travelDate && <p className="mt-1 text-xs text-red-500">{validationErrors.travelDate}</p>}
                     </div>
                   </div>
                   
