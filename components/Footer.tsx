@@ -1,9 +1,12 @@
+"use client";
+
 import {
   APP_FULL_NAME,
   APP_ADDRESS,
   APP_PHONE,
   APP_EMAIL,
 } from "@/lib/constants";
+import Link from "next/link";
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -37,13 +40,13 @@ export default function Footer() {
             </h3>
 
             <ul className="mt-6 space-y-3 text-xs text-stone-500">
-              <li className="cursor-pointer hover:text-stone-300">Umrah</li>
-              <li className="cursor-pointer hover:text-stone-300">Hajj</li>
-              <li className="cursor-pointer hover:text-stone-300">International Tours</li>
-              <li className="cursor-pointer hover:text-stone-300">Domestic Tours</li>
-              <li className="cursor-pointer hover:text-stone-300">Visa Services</li>
-              <li className="cursor-pointer hover:text-stone-300">Ticketing</li>
-              <li className="cursor-pointer hover:text-stone-300">Car Rental</li>
+              <li><Link href="/umrah" className="hover:text-stone-300 transition-colors">Umrah</Link></li>
+              <li><Link href="/hajj" className="hover:text-stone-300 transition-colors">Hajj</Link></li>
+              <li><Link href="/international-tours" className="hover:text-stone-300 transition-colors">International Tours</Link></li>
+              <li><Link href="/domestic-tours" className="hover:text-stone-300 transition-colors">Domestic Tours</Link></li>
+              <li><Link href="/visa" className="hover:text-stone-300 transition-colors">Visa Services</Link></li>
+              <li><Link href="/ticketing" className="hover:text-stone-300 transition-colors">Ticketing</Link></li>
+              <li><Link href="/car-rental" className="hover:text-stone-300 transition-colors">Car Rental</Link></li>
             </ul>
           </div>
 
@@ -54,19 +57,36 @@ export default function Footer() {
             </h3>
 
             <ul className="mt-6 space-y-4 text-xs text-stone-500">
-              <li className="flex gap-3">
-                <IconMap />
-                <span>{APP_ADDRESS}</span>
+              <li>
+                <a 
+                  href={`https://maps.google.com/?q=${encodeURIComponent(APP_ADDRESS)}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex gap-3 hover:text-amber-500 transition-colors"
+                >
+                  <IconMap />
+                  <span>{APP_ADDRESS}</span>
+                </a>
               </li>
 
-              <li className="flex gap-3 items-center">
-                <IconPhone />
-                <span>{APP_PHONE}</span>
+              <li>
+                <a 
+                  href={`tel:${APP_PHONE.replace(/[^0-9+]/g, '')}`} 
+                  className="flex gap-3 items-center hover:text-amber-500 transition-colors"
+                >
+                  <IconPhone />
+                  <span>{APP_PHONE}</span>
+                </a>
               </li>
 
-              <li className="flex gap-3 items-center">
-                <IconMail />
-                <span>{APP_EMAIL}</span>
+              <li>
+                <a 
+                  href={`mailto:${APP_EMAIL}`} 
+                  className="flex gap-3 items-center hover:text-amber-500 transition-colors"
+                >
+                  <IconMail />
+                  <span>{APP_EMAIL}</span>
+                </a>
               </li>
             </ul>
           </div>
@@ -81,7 +101,14 @@ export default function Footer() {
               Get travel deals & updates directly in your inbox.
             </p>
 
-            <form className="mt-6 space-y-3">
+            <form 
+              className="mt-6 space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                // Future newsletter signup logic
+                alert("Newsletter signup coming soon!");
+              }}
+            >
               <input
                 type="email"
                 placeholder="Email address"
@@ -105,13 +132,13 @@ export default function Footer() {
           </p>
 
           <div className="flex gap-6">
-            <span className="hover:text-stone-400 cursor-pointer">Terms</span>
-            <span className="hover:text-stone-400 cursor-pointer">
+            <Link href="#" className="hover:text-stone-400 transition-colors">Terms</Link>
+            <Link href="#" className="hover:text-stone-400 transition-colors">
               Privacy
-            </span>
-            <span className="hover:text-stone-400 cursor-pointer">
+            </Link>
+            <Link href="#" className="hover:text-stone-400 transition-colors">
               Cookies
-            </span>
+            </Link>
           </div>
         </div>
       </div>

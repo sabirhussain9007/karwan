@@ -233,27 +233,27 @@ export default function Navbar() {
         )}
       >
         <div className="px-4 pb-6 pt-4 space-y-2 text-xs uppercase tracking-[0.2em] font-bold">
-          <MobileLink href="/packages">Packages</MobileLink>
-          <MobileLink href="/destinations">Destinations</MobileLink>
+          <MobileLink onClick={() => setIsOpen(false)} href="/packages">Packages</MobileLink>
+          <MobileLink onClick={() => setIsOpen(false)} href="/destinations">Destinations</MobileLink>
           
           <div className="py-2">
             <div className="px-4 py-2 text-amber-500">Services</div>
             <div className="pl-4 mt-2 space-y-1 border-l-2 border-stone-800 ml-6">
-              <MobileLink href="/umrah" className="py-2 text-[10px]">Umrah</MobileLink>
-              <MobileLink href="/hajj" className="py-2 text-[10px]">Hajj</MobileLink>
-              <MobileLink href="/international-tours" className="py-2 text-[10px]">International Tours</MobileLink>
-              <MobileLink href="/domestic-tours" className="py-2 text-[10px]">Domestic Tours</MobileLink>
-              <MobileLink href="/visa" className="py-2 text-[10px]">Visa Services</MobileLink>
-              <MobileLink href="/ticketing" className="py-2 text-[10px]">Ticketing</MobileLink>
-              <MobileLink href="/car-rental" className="py-2 text-[10px]">Car Rental</MobileLink>
+              <MobileLink onClick={() => setIsOpen(false)} href="/umrah" className="py-2 text-[10px]">Umrah</MobileLink>
+              <MobileLink onClick={() => setIsOpen(false)} href="/hajj" className="py-2 text-[10px]">Hajj</MobileLink>
+              <MobileLink onClick={() => setIsOpen(false)} href="/international-tours" className="py-2 text-[10px]">International Tours</MobileLink>
+              <MobileLink onClick={() => setIsOpen(false)} href="/domestic-tours" className="py-2 text-[10px]">Domestic Tours</MobileLink>
+              <MobileLink onClick={() => setIsOpen(false)} href="/visa" className="py-2 text-[10px]">Visa Services</MobileLink>
+              <MobileLink onClick={() => setIsOpen(false)} href="/ticketing" className="py-2 text-[10px]">Ticketing</MobileLink>
+              <MobileLink onClick={() => setIsOpen(false)} href="/car-rental" className="py-2 text-[10px]">Car Rental</MobileLink>
             </div>
           </div>
 
-          <MobileLink href="/community">Community</MobileLink>
-          <MobileLink href="/assistant">AI Assistant</MobileLink>
+          <MobileLink onClick={() => setIsOpen(false)} href="/community">Community</MobileLink>
+          <MobileLink onClick={() => setIsOpen(false)} href="/assistant">AI Assistant</MobileLink>
 
           {isAdmin && (
-            <MobileLink href="/admin" className="text-amber-500">
+            <MobileLink onClick={() => setIsOpen(false)} href="/admin" className="text-amber-500">
               Admin Panel
             </MobileLink>
           )}
@@ -262,7 +262,7 @@ export default function Navbar() {
 
           {user ? (
             <>
-              <MobileLink href="/profile">My Profile</MobileLink>
+              <MobileLink onClick={() => setIsOpen(false)} href="/profile">My Profile</MobileLink>
               <button
                 onClick={() => signOut({ callbackUrl: "/" })}
                 className="w-full text-left block rounded-xl px-4 py-3 text-stone-400 hover:bg-stone-800 hover:text-red-500 transition text-xs uppercase tracking-[0.2em] font-bold"
@@ -271,7 +271,7 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            <MobileLink href="/login" className="text-amber-600">
+            <MobileLink onClick={() => setIsOpen(false)} href="/login" className="text-amber-600">
               Sign In
             </MobileLink>
           )}
@@ -313,14 +313,17 @@ function MobileLink({
   href,
   children,
   className,
+  onClick,
 }: {
   href: string;
   children: React.ReactNode;
   className?: string;
+  onClick?: () => void;
 }) {
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={cn(
         "block rounded-xl px-4 py-3 text-stone-400 hover:bg-stone-800 hover:text-white transition",
         className
