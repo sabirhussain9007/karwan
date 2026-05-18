@@ -82,3 +82,46 @@ export const notifyStatusChange = async ({
     sendEmailNotification(adminEmailAddress, adminSubject, adminHtml).catch(console.error);
   }
 };
+
+export const notifyNewBooking = async ({
+  user,
+  serviceType,
+  adminEmail,
+}: {
+  user: { name: string; email: string };
+  serviceType: string;
+  adminEmail?: string;
+}) => {
+  const adminEmailAddress = adminEmail || process.env.ADMIN_EMAIL;
+  
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
+    console.warn("Email credentials not configured in .env.local. Skipping email notifications.");
+    return;
+  }
+
+  // 1. Notify User
+  const userSubject = `Booking Received: ${serviceType}`;
+  const userHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+      <h2 style="color: #2563eb;">Hello ${user.name},</h2>
+      <p style="font-size: 16px; color: #333;">We have successfully received your booking/application for <strong>${serviceType}</strong>.</p>
+      <p style="font-size: 16px; color: #333;">Our team will review it and get back to you shortly.</p>
+      <p style="font-size: 14px; color: #666; margin-top: 30px;">Thank you for choosing Pak Karwan Travel App.</p>
+    </div>
+  `;
+  sendEmailNotification(user.email, userSubject, userHtml).catch(console.error);
+
+  // 2. Notify Admin
+  if (adminEmailAddress) {
+    const adminSubject = `New Booking/Application: ${user.name} - ${serviceType}`;
+    const adminHtml = `
+      <div style="font-family: Arial, sans-serif;">
+        <h2 style="color: #333;">New Booking/Application Received</h2>
+        <p><strong>User:</strong> ${user.name} (${user.email})</p>
+        <p><strong>Service:</strong> ${serviceType}</p>
+        <p>Please log in to the admin dashboard to review and manage this request.</p>
+      </div>
+    `;
+    sendEmailNotification(adminEmailAddress, adminSubject, adminHtml).catch(console.error);
+  }
+};

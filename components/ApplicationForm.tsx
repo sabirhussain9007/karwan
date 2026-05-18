@@ -86,7 +86,7 @@ export default function ApplicationForm({
     if (!formData.email.trim()) { errors.email = "Email is required"; isValid = false; } 
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { errors.email = "Invalid email format"; isValid = false; }
     if (!formData.phone.trim()) { errors.phone = "Phone is required"; isValid = false; }
-    else if (!/^\\+?[\\d\\s-]{10,}$/.test(formData.phone)) { errors.phone = "Invalid phone number"; isValid = false; }
+    else if (!/^03\d{9}$/.test(formData.phone)) { errors.phone = "Format: 03XXXXXXXXX"; isValid = false; }
     if (!formData.nationality.trim()) { errors.nationality = "Nationality is required"; isValid = false; }
     if (!formData.passport.trim()) { errors.passport = "Passport is required"; isValid = false; }
     if (!formData.dateOfBirth) { errors.dateOfBirth = "Date of Birth is required"; isValid = false; }
@@ -232,7 +232,7 @@ export default function ApplicationForm({
                 <input
                   type="tel"
                   name="phone"
-                  placeholder="Phone"
+                  placeholder="03XXXXXXXXX"
                   value={formData.phone}
                   onChange={handleInputChange}
                   required

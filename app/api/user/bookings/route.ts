@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import connectToDatabase from "@/lib/mongoose";
 import Booking from "@/models/Booking";
+import { notifyNewBooking } from "@/lib/notifications";
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,6 +40,12 @@ export async function POST(request: NextRequest) {
       user: (session.user as any).id,
     });
     await booking.save();
+
+    // Trigger email notification for new booking
+    notifyNewBooking({
+      user: { name: (session.user as any).name, email: (session.user as any).email },
+      serviceType: booking.serviceType || "Custom Package Booking",
+    });
 
     return NextResponse.json(booking, { status: 201 });
   } catch (error: any) {

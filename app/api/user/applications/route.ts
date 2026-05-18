@@ -5,6 +5,7 @@ import connectToDatabase from "@/lib/mongoose";
 import Application from "@/models/Application";
 import Notification from "@/models/Notification";
 import User from "@/models/User";
+import { notifyNewBooking } from "@/lib/notifications";
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,6 +63,12 @@ export async function POST(request: NextRequest) {
       }));
       await Notification.insertMany(notifications);
     }
+
+    // Trigger email notification for new booking
+    notifyNewBooking({
+      user: { name: (session.user as any).name, email: (session.user as any).email },
+      serviceType,
+    });
 
     return NextResponse.json(application, { status: 201 });
   } catch (error: any) {

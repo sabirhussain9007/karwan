@@ -66,8 +66,8 @@ export default function BookingModal({
     if (!formData.phone.trim()) {
       errors.phone = "Phone is required";
       isValid = false;
-    } else if (!/^\\+?[\\d\\s-]{10,}$/.test(formData.phone)) {
-      errors.phone = "Invalid phone number";
+    } else if (!/^03\d{9}$/.test(formData.phone)) {
+      errors.phone = "Phone number must be in format 03XXXXXXXXX";
       isValid = false;
     }
 
@@ -223,7 +223,7 @@ export default function BookingModal({
                   value={formData.phone}
                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
                   className={`w-full bg-stone-950 border ${validationErrors.phone ? 'border-red-500 focus:border-red-400' : 'border-stone-800 focus:border-amber-500'} rounded-xl px-4 py-3 text-white focus:outline-none transition-colors`}
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="03XXXXXXXXX"
                 />
                 {validationErrors.phone && <p className="mt-1 text-xs text-red-500">{validationErrors.phone}</p>}
               </div>

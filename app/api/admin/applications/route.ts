@@ -50,7 +50,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, action, ...updateData } = body;
 
-    const application = await Application.findById(id);
+    const application = await Application.findById(id).populate("userId", "name email");
     if (!application) {
       return NextResponse.json(
         { error: "Application not found" },
