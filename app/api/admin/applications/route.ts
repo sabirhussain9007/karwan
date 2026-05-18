@@ -84,7 +84,8 @@ export async function PUT(request: NextRequest) {
       await Notification.create({
         userId: application.userId,
         title: "Application Approved",
-        message: `Your application for ${application.serviceType} has been approved!`,
+        message: `Your application for ${application.serviceType} has been approved!
+        kindly contact the administrator for further details.`,
         type: "success",
         relatedApplicationId: application._id
       });

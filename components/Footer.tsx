@@ -27,7 +27,7 @@ export default function Footer() {
             </p>
 
             <div className="mt-6 flex gap-4">
-              <SocialIcon type="facebook" />
+              <SocialIcon type="facebook" href="https://www.facebook.com/p/Pak-Karwan-E-Bilal-Travel-Tours-100063945407153/" />
               <SocialIcon type="instagram" />
               <SocialIcon type="twitter" />
             </div>
@@ -173,7 +173,7 @@ function IconMail() {
 }
 
 /* Social */
-function SocialIcon({ type }: { type: "facebook" | "instagram" | "twitter" }) {
+function SocialIcon({ type, href }: { type: "facebook" | "instagram" | "twitter", href?: string }) {
   const icons = {
     facebook: (
       <path d="M22 12a10 10 0 10-11 10v-7H8v-3h3v-2c0-3 2-4 4-4h2v3h-2c-1 0-1 .5-1 1v2h3l-1 3h-2v7a10 10 0 009-10z" />
@@ -188,7 +188,9 @@ function SocialIcon({ type }: { type: "facebook" | "instagram" | "twitter" }) {
 
   return (
     <a
-      href="#"
+      href={href || "#"}
+      target={href ? "_blank" : undefined}
+      rel={href ? "noopener noreferrer" : undefined}
       className="rounded-lg bg-stone-800 p-2.5 border border-stone-700 hover:text-amber-500"
     >
       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">

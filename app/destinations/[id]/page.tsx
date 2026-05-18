@@ -84,7 +84,7 @@ export default function DestinationDetails({ params }: { params: Promise<{ id: s
     if (!formData.email.trim()) { errors.email = "Email is required"; isValid = false; } 
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { errors.email = "Invalid email format"; isValid = false; }
     if (!formData.phone.trim()) { errors.phone = "Phone is required"; isValid = false; }
-    else if (!/^\\+?[\\d\\s-]{10,}$/.test(formData.phone)) { errors.phone = "Invalid phone number"; isValid = false; }
+    else if (!/^03\d{9}$/.test(formData.phone)) { errors.phone = "Format: 03XXXXXXXXX"; isValid = false; }
     if (formData.numberOfPassengers < 1) { errors.numberOfPassengers = "Must be at least 1 passenger"; isValid = false; }
     if (formData.travelDate) {
       const today = new Date();
@@ -277,6 +277,7 @@ export default function DestinationDetails({ params }: { params: Promise<{ id: s
                       <input 
                         type="tel" 
                         required
+                        placeholder="03XXXXXXXXX"
                         value={formData.phone}
                         onChange={(e) => setFormData({...formData, phone: e.target.value})}
                         className={`w-full bg-stone-950 border ${validationErrors.phone ? 'border-red-500 focus:border-red-400' : 'border-stone-800 focus:border-amber-500'} rounded-xl px-4 py-3 text-white focus:outline-none transition-colors`}
