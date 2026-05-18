@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const serviceType = searchParams.get("serviceType");
     const status = searchParams.get("status");
 
-    let query: any = {};
+    const query: any = {};
     if (serviceType) query.serviceType = serviceType;
     if (status) query.status = status;
 
@@ -118,9 +118,9 @@ export async function PUT(request: NextRequest) {
 
     await application.save();
     return NextResponse.json(application);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Failed to update application" },
+      { error: (error as Error).message || "Failed to update application" },
       { status: 500 }
     );
   }
@@ -160,3 +160,5 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
+
