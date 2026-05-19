@@ -7,6 +7,7 @@ import { resolveAvatarInput } from "@/lib/avatar.server";
 export async function POST(req: Request) {
   try {
     const { name, email, password, avatar } = await req.json();
+    const normalizedEmail = email?.toLowerCase().trim();
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (existingUser) {
       return NextResponse.json(
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
 
     const newUser = new User({
       name,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       role: "user",
       avatar: "",
