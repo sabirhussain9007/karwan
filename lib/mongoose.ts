@@ -32,12 +32,7 @@ async function connectToDatabase() {
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose
-      .connect(MONGODB_URI)
-      .then((mongooseInstance) => {
-        console.log("Connected to MongoDB");
-        return mongooseInstance;
-      });
+    cached.promise = mongoose.connect(MONGODB_URI);
   }
 
   try {

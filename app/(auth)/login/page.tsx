@@ -5,8 +5,6 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, Loader2 } from "lucide-react";
-import GoogleSignInButton from "@/components/GoogleSignInButton";
-
 export default function LoginPage() {
   return (
     <Suspense
@@ -43,15 +41,17 @@ function LoginForm() {
 
   useEffect(() => {
     const urlError = searchParams.get("error");
+    if (!urlError) return;
+
     if (urlError === "CredentialsSignin") {
       setError("Invalid email or password");
-    } else if (urlError === "OAuthAccountNotLinked") {
+    } else if (urlError === "Configuration") {
       setError(
-        "This email is already registered with a password. Sign in with email and password, or use the same Google account."
+        "Auth is misconfigured. Set NEXTAUTH_URL and NEXTAUTH_SECRET in .env.local."
       );
-    } else if (urlError === "OAuthSignin" || urlError === "Callback") {
-      setError("Google sign-in failed. Check your Google OAuth settings and try again.");
-    } else if (urlError) {
+    } else if (urlError.includes(" ")) {
+      setError(decodeURIComponent(urlError));
+    } else {
       setError("An error occurred during authentication");
     }
   }, [searchParams]);
@@ -132,18 +132,7 @@ function LoginForm() {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-100 space-y-6">
-          <GoogleSignInButton disabled={isLoading} />
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with email</span>
-            </div>
-          </div>
-
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-100">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md">

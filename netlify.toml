@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build"
+
+[build.environment]
+  AUTH_TRUST_HOST = "true"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Set in Netlify UI (Site settings → Environment variables):
+# NEXTAUTH_URL=https://karwan-e-bilal.netlify.app
+# NEXTAUTH_SECRET=...
+# MONGODB_URI=...

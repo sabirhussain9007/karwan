@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       const session = event.data.object as Stripe.Checkout.Session;
 
       // Update booking status
-      const booking = await Booking.findOneAndUpdate(
+      await Booking.findOneAndUpdate(
         { stripeSessionId: session.id },
         {
           paymentStatus: "Paid",
@@ -43,10 +43,6 @@ export async function POST(request: NextRequest) {
         },
         { new: true }
       );
-
-      if (!booking) {
-        console.log("Booking not found for session:", session.id);
-      }
     }
 
     return NextResponse.json({ received: true });
