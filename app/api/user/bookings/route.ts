@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       serviceType: booking.serviceType || "Custom Package Booking",
     });
 
-    return NextResponse.json(booking, { status: 201 });
+    return NextResponse.json(booking.toObject(), { status: 201 });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to create booking" },
@@ -78,7 +78,7 @@ export async function PUT(request: NextRequest) {
     Object.assign(booking, updateData);
     await booking.save();
 
-    return NextResponse.json(booking);
+    return NextResponse.json(booking.toObject());
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to update booking" },

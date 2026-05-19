@@ -9,7 +9,7 @@ export async function GET(
   try {
     const { id } = await params;
     await connectToDatabase();
-    const destination = await Destination.findById(id);
+    const destination = await Destination.findById(id).lean();
 
     if (!destination) {
       return NextResponse.json(

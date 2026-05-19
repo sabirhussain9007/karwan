@@ -127,6 +127,13 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
       filtered = filtered.filter(app => app.status === applicationFilter);
     }
     setFilteredApplications(filtered);
+
+    // After filtering and setting applications, scroll to the specific application if a hash is present
+    if (window.location.hash && window.location.hash.startsWith('#application-')) {
+      setTimeout(() => {
+        document.getElementById(window.location.hash.substring(1))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 500);
+    }
   }, [applications, applicationFilter, activeTab]);
 
   const fetchDestinations = async () => {
@@ -650,6 +657,7 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
                   {filteredApplications.map((app) => (
                     <div
                       key={app._id}
+                      id={`application-${app._id}`}
                       className="bg-slate-700/50 border border-slate-600 rounded-lg p-4 hover:border-blue-500 transition"
                     >
                       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">

@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import connectToDatabase from "@/lib/mongoose";
 import User from "@/models/User";
+import { resolveAvatarInput } from "@/lib/avatar.server";
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password } = await req.json();
+    const { name, email, password, avatar } = await req.json();
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -31,8 +32,22 @@ export async function POST(req: Request) {
       name,
       email,
       password: hashedPassword,
-      role: "user", // Default role
+      role: "user",
+      avatar: "",
     });
+
+    if (avatar) {
+      try {
+        newUser.avatar = await resolveAvatarInput(
+          avatar,
+          newUser._id.toString()
+        );
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Invalid profile image";
+        return NextResponse.json({ message }, { status: 400 });
+      }
+    }
 
     await newUser.save();
 

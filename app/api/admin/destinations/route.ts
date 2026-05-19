@@ -7,7 +7,7 @@ import Destination from "@/models/Destination";
 export async function GET() {
   try {
     await connectToDatabase();
-    const destinations = await Destination.find().sort({ createdAt: -1 });
+    const destinations = await Destination.find().sort({ createdAt: -1 }).lean();
     return NextResponse.json(destinations);
   } catch (error) {
     return NextResponse.json(
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const destination = new Destination(body);
     await destination.save();
 
-    return NextResponse.json(destination, { status: 201 });
+    return NextResponse.json(destination.toObject(), { status: 201 });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to create destination" },
@@ -52,7 +52,7 @@ export async function PUT(request: NextRequest) {
 
     const destination = await Destination.findByIdAndUpdate(id, updateData, {
       new: true,
-    });
+    }).lean();
 
     if (!destination) {
       return NextResponse.json(

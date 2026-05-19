@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     
     const query = featured === 'true' ? { isFeatured: true } : {};
     
-    const packages = await Package.find(query).sort({ createdAt: -1 });
+    const packages = await Package.find(query).sort({ createdAt: -1 }).lean();
     return NextResponse.json(packages);
   } catch (error) {
     console.error("Error fetching packages:", error);

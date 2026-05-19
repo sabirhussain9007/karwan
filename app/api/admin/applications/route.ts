@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
     const applications = await Application.find(query)
       .populate("userId", "name email")
       .populate("packageId", "title price")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json(applications);
   } catch (error) {
@@ -117,7 +118,7 @@ export async function PUT(request: NextRequest) {
     }
 
     await application.save();
-    return NextResponse.json(application);
+    return NextResponse.json(application.toObject());
   } catch (error: unknown) {
     return NextResponse.json(
       { error: (error as Error).message || "Failed to update application" },

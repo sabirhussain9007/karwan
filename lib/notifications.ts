@@ -125,3 +125,26 @@ export const notifyNewBooking = async ({
     sendEmailNotification(adminEmailAddress, adminSubject, adminHtml).catch(console.error);
   }
 };
+
+export const sendPasswordResetEmail = async (email: string, resetUrl: string) => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
+    console.warn("Email credentials not configured in .env.local. Skipping email notifications.");
+    return;
+  }
+
+  const subject = "Password Reset Request";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+      <h2 style="color: #2563eb;">Password Reset Request</h2>
+      <p style="font-size: 16px; color: #333;">We received a request to reset your password for your Pak Karwan Travel App account.</p>
+      <p style="font-size: 16px; color: #333;">Click the button below to set a new password:</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${resetUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Reset Password</a>
+      </div>
+      <p style="font-size: 14px; color: #666;">If you didn't request this, you can safely ignore this email. This link will expire in 1 hour.</p>
+      <p style="font-size: 14px; color: #666; margin-top: 30px;">Thank you for choosing Pak Karwan Travel App.</p>
+    </div>
+  `;
+
+  await sendEmailNotification(email, subject, html);
+};

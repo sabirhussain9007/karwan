@@ -12,7 +12,7 @@ export async function GET() {
     }
 
     await connectToDatabase();
-    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    const users = await User.find().select("-password").sort({ createdAt: -1 }).lean();
     return NextResponse.json(users);
   } catch (error) {
     return NextResponse.json(
@@ -39,7 +39,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json(user);
+    return NextResponse.json(user.toObject());
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to update user" },

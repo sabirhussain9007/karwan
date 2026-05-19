@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
     await connectToDatabase();
     const applications = await Application.find({ userId: (session.user as any).id })
       .populate("packageId", "title price")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json(applications);
   } catch (error) {
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
       serviceType,
     });
 
-    return NextResponse.json(application, { status: 201 });
+    return NextResponse.json(application.toObject(), { status: 201 });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to create application" },
@@ -101,7 +102,7 @@ export async function PUT(request: NextRequest) {
     Object.assign(application, updateData);
     await application.save();
 
-    return NextResponse.json(application);
+    return NextResponse.json(application.toObject());
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to update application" },

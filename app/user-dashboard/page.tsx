@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useUserProfile } from "@/context/UserProfileContext";
 import { useRouter } from "next/navigation";
 import { Calendar, DollarSign, CheckCircle2, Clock, XCircle, Eye, Download, X } from "lucide-react";
 
@@ -47,6 +48,7 @@ type UserProfile = {
 
 export default function UserDashboard() {
   const { data: session, status } = useSession();
+  const { refreshProfile } = useUserProfile();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<"profile" | "bookings" | "reviews">("profile");
@@ -322,6 +324,7 @@ export default function UserDashboard() {
       if (!res.ok) throw new Error("Failed to update profile");
       setShowProfileModal(false);
       fetchProfile();
+      await refreshProfile();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error updating profile");
     }

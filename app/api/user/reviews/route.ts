@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     });
     await review.save();
 
-    return NextResponse.json(review, { status: 201 });
+    return NextResponse.json(review.toObject(), { status: 201 });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to create review" },
@@ -71,7 +71,7 @@ export async function PUT(request: NextRequest) {
     Object.assign(review, updateData);
     await review.save();
 
-    return NextResponse.json(review);
+    return NextResponse.json(review.toObject());
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to update review" },

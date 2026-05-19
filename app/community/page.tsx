@@ -58,10 +58,6 @@ export default function CommunityPage() {
     setPreviewUrl(null);
   };
 
-  useEffect(() => {
-    fetchPosts();
-  }, []);
-
   const fetchPosts = async () => {
     try {
       const res = await fetch('/api/posts');
@@ -78,6 +74,10 @@ export default function CommunityPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
 
   const validatePost = () => {
     const errors: any = {};

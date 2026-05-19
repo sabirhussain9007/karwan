@@ -6,24 +6,29 @@ import Image from "next/image";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useUserProfile } from "@/context/UserProfileContext";
+import UserAvatar from "@/components/UserAvatar";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const { data: session, status } = useSession();
+  const { avatar } = useUserProfile();
   const user = session?.user;
   const isAdmin = (session?.user as any)?.role === "admin";
+  const router = useRouter();
 
   useEffect(() => {
-    if (user) {
-      fetch('/api/user/notifications')
-        .then(res => res.json())
-        .then(data => {
-          if(Array.isArray(data)) setNotifications(data);
-        })
-        .catch(console.error);
-    }
+    if (!user) return;
+
+    fetch("/api/user/notifications")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setNotifications(data);
+      })
+      .catch(console.error);
   }, [user]);
 
   const markAsRead = async (id: string) => {
@@ -143,6 +148,14 @@ export default function Navbar() {
                             key={notif._id}
                             onClick={() => {
                               if (!notif.isRead) markAsRead(notif._id);
+                              if (notif.relatedApplicationId) {
+                                setShowNotifications(false);
+                                if (isAdmin) {
+                                  router.push(`/admin#application-${notif.relatedApplicationId}`);
+                                } else {
+                                  router.push(`/profile#application-${notif.relatedApplicationId}`);
+                                }
+                              }
                             }}
                             className={`p-4 border-b border-stone-800 cursor-pointer transition hover:bg-stone-800 ${notif.isRead ? 'opacity-60' : 'bg-stone-800/30'}`}
                           >
@@ -171,9 +184,13 @@ export default function Navbar() {
 
               <div className="relative group">
                 <button className="flex items-center gap-3 rounded-full border border-stone-800 p-1 pr-4 bg-stone-800/50 hover:bg-stone-800 transition">
-                  <div className="h-8 w-8 rounded-full overflow-hidden border border-amber-600/30 bg-amber-600 flex items-center justify-center text-white font-bold">
-                    {user.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
-                  </div>
+                  <UserAvatar
+                    src={avatar}
+                    name={user.name}
+                    email={user.email}
+                    size="sm"
+                    className="border border-amber-600/30"
+                  />
 
                   <div className="text-right">
                     <p className="text-xs font-semibold text-white">

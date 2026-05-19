@@ -1,21 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="animate-spin w-8 h-8 text-emerald-600" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [validationErrors, setValidationErrors] = useState<{email?: string, password?: string}>({});
+  const [validationErrors, setValidationErrors] = useState<{
+    email?: string;
+    password?: string;
+  }>({});
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+
+  useEffect(() => {
+    const urlError = searchParams.get("error");
+    if (urlError === "CredentialsSignin") {
+      setError("Invalid email or password");
+    } else if (urlError) {
+      setError("An error occurred during authentication");
+    }
+  }, [searchParams]);
 
   const validateForm = () => {
-    const errors: {email?: string, password?: string} = {};
+    const errors: { email?: string; password?: string } = {};
     let isValid = true;
 
     if (!email.trim()) {
@@ -38,26 +65,26 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
-    setIsLoading(true);
-    setError("");
 
     try {
-      const res = await signIn("credentials", {
+      setIsLoading(true);
+
+      const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
       });
 
-      if (res?.error) {
-        setError("Invalid email or password");
-        setIsLoading(false);
+      if (result?.ok) {
+        router.push("/");
+        router.refresh();
         return;
       }
 
-      router.push("/");
-      router.refresh();
-    } catch (err) {
+      if (result?.error) {
+        setError(result.error);
+      }
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setIsLoading(false);
@@ -86,11 +113,7 @@ export default function LoginPage() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md">
-                <div className="flex">
-                  <div className="ml-3">
-                    <p className="text-sm text-red-700">{error}</p>
-                  </div>
-                </div>
+                <p className="text-sm text-red-700">{error}</p>
               </div>
             )}
 
@@ -113,11 +136,17 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className={`appearance-none block w-full pl-10 px-3 py-2 border ${validationErrors.email ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-emerald-500 focus:border-emerald-500'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm`}
+                  className={`appearance-none block w-full pl-10 px-3 py-2 border ${
+                    validationErrors.email
+                      ? "border-red-300 focus:ring-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:ring-emerald-500 focus:border-emerald-500"
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm`}
                   placeholder="you@example.com"
                 />
               </div>
-              {validationErrors.email && <p className="mt-2 text-sm text-red-600">{validationErrors.email}</p>}
+              {validationErrors.email && (
+                <p className="mt-2 text-sm text-red-600">{validationErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -139,11 +168,28 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={`appearance-none block w-full pl-10 px-3 py-2 border ${validationErrors.password ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-emerald-500 focus:border-emerald-500'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm`}
+                  className={`appearance-none block w-full pl-10 px-3 py-2 border ${
+                    validationErrors.password
+                      ? "border-red-300 focus:ring-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:ring-emerald-500 focus:border-emerald-500"
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm`}
                   placeholder="••••••••"
                 />
               </div>
-              {validationErrors.password && <p className="mt-2 text-sm text-red-600">{validationErrors.password}</p>}
+              {validationErrors.password && (
+                <p className="mt-2 text-sm text-red-600">{validationErrors.password}</p>
+              )}
+
+              <div className="flex items-center justify-between mt-2">
+                <div className="text-sm">
+                  <Link
+                    href="/forgot-password"
+                    className="font-medium text-emerald-600 hover:text-emerald-500"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
+              </div>
             </div>
 
             <div>

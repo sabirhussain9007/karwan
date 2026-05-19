@@ -7,7 +7,7 @@ import Package from "@/models/Package";
 export async function GET() {
   try {
     await connectToDatabase();
-    const packages = await Package.find().sort({ createdAt: -1 });
+    const packages = await Package.find().sort({ createdAt: -1 }).lean();
     return NextResponse.json(packages);
   } catch (error) {
     return NextResponse.json(
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const pkg = new Package(body);
     await pkg.save();
 
-    return NextResponse.json(pkg, { status: 201 });
+    return NextResponse.json(pkg.toObject(), { status: 201 });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to create package" },
@@ -50,7 +50,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, ...updateData } = body;
 
-    const pkg = await Package.findByIdAndUpdate(id, updateData, { new: true });
+    const pkg = await Package.findByIdAndUpdate(id, updateData, { new: true }).lean();
 
     if (!pkg) {
       return NextResponse.json({ error: "Package not found" }, { status: 404 });

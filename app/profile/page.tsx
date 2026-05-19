@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import { User as UserIcon, Mail, Star, Clock, CheckCircle2, XCircle, FileText, Bell } from 'lucide-react';
+import { User as UserIcon, Mail, Star, Clock, CheckCircle2, XCircle, FileText, Bell, Camera, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useUserProfile } from '@/context/UserProfileContext';
+import UserAvatar from '@/components/UserAvatar';
 
 interface UserProfile {
   _id: string;
@@ -14,6 +16,7 @@ interface UserProfile {
   role: string;
   loyaltyPoints?: number;
   createdAt: string;
+  avatar?: string;
 }
 
 interface Application {
@@ -29,10 +32,13 @@ interface Application {
 }
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
+  const { avatar, refreshProfile } = useUserProfile();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
   const [applications, setApplications] = useState<Application[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'applications' | 'notifications'>('applications');
@@ -42,7 +48,15 @@ export default function ProfilePage() {
     if (status === 'unauthenticated') {
       router.push('/login');
     } else if (status === 'authenticated') {
-      fetchUserData();
+      fetchUserData().then(() => {
+        // Handle scroll to application if hash is present
+        if (window.location.hash && window.location.hash.startsWith('#application-')) {
+          setActiveTab('applications');
+          setTimeout(() => {
+            document.getElementById(window.location.hash.substring(1))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 500);
+        }
+      });
     }
   }, [status, router]);
 
@@ -70,6 +84,46 @@ export default function ProfilePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarError('Image must be smaller than 2MB');
+      return;
+    }
+
+    setAvatarError('');
+    setUploadingAvatar(true);
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const res = await fetch('/api/user/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ avatar: reader.result }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          setAvatarError(data.error || 'Failed to update photo');
+          return;
+        }
+
+        const updated = await res.json();
+        setProfile((prev) => (prev ? { ...prev, avatar: updated.avatar } : prev));
+        await refreshProfile();
+      } catch {
+        setAvatarError('Failed to update photo');
+      } finally {
+        setUploadingAvatar(false);
+        e.target.value = '';
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const getStatusIcon = (status: string) => {
@@ -117,9 +171,35 @@ export default function ProfilePage() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-stone-900 border border-stone-800 rounded-3xl p-8"
             >
-              <div className="w-24 h-24 bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-amber-500/20">
-                <UserIcon className="text-amber-500 w-12 h-12" />
+              <div className="relative mx-auto mb-6 w-24 h-24 group">
+                <UserAvatar
+                  src={avatar || profile?.avatar}
+                  name={profile?.name}
+                  email={profile?.email}
+                  size="lg"
+                  className="border-4 border-amber-500/20"
+                />
+                <label className="absolute inset-0 flex flex-col items-center justify-center rounded-full bg-black/60 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                  {uploadingAvatar ? (
+                    <Loader2 className="w-6 h-6 text-white animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="w-6 h-6 text-white mb-1" />
+                      <span className="text-[10px] text-white font-medium">Change</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                    disabled={uploadingAvatar}
+                  />
+                </label>
               </div>
+              {avatarError && (
+                <p className="text-center text-sm text-red-400 mb-4">{avatarError}</p>
+              )}
               
               <h2 className="text-2xl font-bold text-white text-center mb-6">{profile?.name}</h2>
               
@@ -210,6 +290,7 @@ export default function ProfilePage() {
                     {applications.map((app) => (
                       <div 
                         key={app._id}
+                        id={`application-${app._id}`}
                         className="bg-stone-950 border border-stone-800 rounded-2xl p-6 hover:border-stone-700 transition-colors"
                       >
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -257,7 +338,15 @@ export default function ProfilePage() {
                     notifications.map((notif) => (
                       <div 
                         key={notif._id}
-                        className={`bg-stone-950 border border-stone-800 rounded-2xl p-6 transition-colors relative overflow-hidden ${!notif.isRead ? 'border-amber-600/50' : 'hover:border-stone-700'}`}
+                        onClick={() => {
+                          if (notif.relatedApplicationId) {
+                            setActiveTab('applications');
+                            setTimeout(() => {
+                              document.getElementById(`application-${notif.relatedApplicationId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }, 100);
+                          }
+                        }}
+                        className={`bg-stone-950 border border-stone-800 rounded-2xl p-6 transition-colors relative overflow-hidden ${notif.relatedApplicationId ? 'cursor-pointer' : ''} ${!notif.isRead ? 'border-amber-600/50' : 'hover:border-stone-700'}`}
                       >
                         {!notif.isRead && (
                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500"></div>

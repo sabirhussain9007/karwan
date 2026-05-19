@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
 
     const notifications = await Notification.find({ userId: (session.user as any).id })
       .sort({ createdAt: -1 })
-      .limit(20);
+      .limit(20)
+      .lean();
 
     return NextResponse.json(notifications);
   } catch (error) {
@@ -54,7 +55,7 @@ export async function PUT(request: NextRequest) {
       { _id: notificationId, userId: (session.user as any).id },
       { $set: { isRead: true } },
       { new: true }
-    );
+    ).lean();
 
     if (!notification) {
       return NextResponse.json({ error: "Notification not found" }, { status: 404 });
