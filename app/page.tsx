@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'motion/react';
 import { Search, MapPin, Calendar, Users, Star, ArrowRight, Plane, Shield, Headphones, Send } from 'lucide-react';
+import DestinationCombobox from '@/components/DestinationCombobox';
 import { formatCurrency } from '@/lib/utils';
 import { CATEGORIES } from '@/lib/constants';
 import { useSession } from 'next-auth/react';
@@ -51,6 +52,7 @@ const Home = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const [searchDestination, setSearchDestination] = useState("");
+  const [selectedDestinationId, setSelectedDestinationId] = useState<string | null>(null);
   const [searchWindow, setSearchWindow] = useState("Next 30 Days");
 
   const handleApplyClick = (pkg: any) => {
@@ -211,20 +213,23 @@ const Home = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="rounded-3xl bg-stone-900/95 backdrop-blur-xl p-4 md:p-5 border border-stone-800 shadow-2xl flex flex-col md:flex-row items-center gap-4 md:gap-6"
+            className="rounded-3xl bg-stone-900/95 backdrop-blur-xl p-4 md:p-5 border border-stone-800 shadow-2xl flex flex-col md:flex-row items-center gap-4 md:gap-6 overflow-visible"
           >
             <div className="w-full md:flex-1 flex items-center gap-4 px-4 md:px-6 border-b md:border-b-0 md:border-r border-stone-800 pb-4 md:pb-0">
               <MapPin className="text-amber-500 h-5 w-5 flex-shrink-0" />
-              <div className="flex flex-col w-full">
-                <span className="text-[9px] font-black text-stone-500 uppercase tracking-widest">Destination</span>
-                <input 
-                  type="text" 
-                  value={searchDestination}
-                  onChange={(e) => setSearchDestination(e.target.value)}
-                  placeholder="Where to?" 
-                  className="text-sm font-medium focus:outline-none bg-transparent text-white w-full placeholder:text-stone-700" 
-                />
-              </div>
+              <DestinationCombobox
+                variant="hero"
+                label="Destination"
+                placeholder="Where to?"
+                value={searchDestination}
+                onChange={(v) => {
+                  setSearchDestination(v);
+                  setSelectedDestinationId(null);
+                }}
+                onSelect={(d) => {
+                  setSelectedDestinationId(d._id);
+                }}
+              />
             </div>
             <div className="w-full md:flex-1 flex items-center gap-4 px-4 md:px-6 border-b md:border-b-0 md:border-r border-stone-800 pb-4 md:pb-0">
               <Calendar className="text-amber-500 h-5 w-5 flex-shrink-0" />
@@ -249,7 +254,13 @@ const Home = () => {
               </div>
             </div>
             <button 
-              onClick={() => router.push(`/packages?search=${encodeURIComponent(searchDestination)}`)}
+              onClick={() => {
+                if (selectedDestinationId) {
+                  router.push(`/destinations/${selectedDestinationId}`);
+                  return;
+                }
+                router.push(`/packages?search=${encodeURIComponent(searchDestination)}`);
+              }}
               className="w-full md:w-auto bg-amber-600 p-4 md:p-5 rounded-2xl text-black hover:bg-amber-500 transition-all shadow-lg shadow-amber-600/20 active:scale-95 flex items-center justify-center"
             >
               <Search className="h-6 w-6" />

@@ -1,163 +1,145 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Heart, MessageCircle, Share2, User, MapPin, Image as ImageIcon, X } from 'lucide-react';
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import {
+  Search,
+  Users,
+  Heart,
+  MessageCircle,
+  MapPin,
+  Sparkles,
+  Filter,
+  X,
+  Compass,
+} from "lucide-react";
+import CreatePostForm from "@/components/community/CreatePostForm";
+import CommunityPostCard, {
+  type CommunityPost,
+} from "@/components/community/CommunityPostCard";
+import { SORT_OPTIONS, TRIP_TYPES, type SortOption } from "@/lib/community/constants";
 
-interface Comment {
-  _id?: string;
-  text: string;
-  authorName: string;
-  createdAt: string;
-}
-
-interface Post {
-  _id: string;
-  author: string;
-  title: string;
-  content: string;
-  destination: string;
-  imageUrl?: string;
-  likes: number;
-  hasLiked: boolean;
-  comments: Comment[];
-  commentCount: number;
-  createdAt: string;
-}
+type CommunityStats = {
+  totalPosts: number;
+  totalLikes: number;
+  totalComments: number;
+  topDestinations: { name: string; count: number }[];
+  trendingTags: { name: string; count: number }[];
+};
 
 export default function CommunityPage() {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const { data: session, status } = useSession();
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [stats, setStats] = useState<CommunityStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [newPost, setNewPost] = useState({ title: '', content: '', destination: '', imageUrl: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [sort, setSort] = useState<SortOption>("recent");
+  const [destinationFilter, setDestinationFilter] = useState("");
+  const [tripTypeFilter, setTripTypeFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
-  const [commentText, setCommentText] = useState('');
+  const [commentText, setCommentText] = useState("");
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [postErrors, setPostErrors] = useState<{title?: string, content?: string}>({});
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("Image must be smaller than 5MB");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewPost({ ...newPost, imageUrl: reader.result as string });
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const removeImage = () => {
-    setNewPost({ ...newPost, imageUrl: '' });
-    setPreviewUrl(null);
-  };
-
-  const fetchPosts = async () => {
+  const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch('/api/posts');
+      const res = await fetch("/api/posts/stats");
+      if (res.ok) setStats(await res.json());
+    } catch {
+      /* stats optional */
+    }
+  }, []);
+
+  const fetchPosts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("q", debouncedSearch);
+      if (destinationFilter) params.set("destination", destinationFilter);
+      if (tripTypeFilter) params.set("tripType", tripTypeFilter);
+      if (tagFilter) params.set("tag", tagFilter);
+      params.set("sort", sort);
+
+      const res = await fetch(`/api/posts?${params.toString()}`);
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setPosts(data);
-      } else {
-        setPosts([]);
-        console.error('Invalid posts data:', data);
-      }
-    } catch (error) {
-      console.error('Error fetching posts:', error);
+      setPosts(Array.isArray(data) ? data : []);
+    } catch {
+      setPosts([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, destinationFilter, tripTypeFilter, tagFilter, sort]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, [fetchPosts]);
 
-  const validatePost = () => {
-    const errors: any = {};
-    let isValid = true;
-    if (!newPost.title.trim()) { errors.title = "Title is required"; isValid = false; }
-    if (!newPost.content.trim()) { errors.content = "Story content is required"; isValid = false; }
-    setPostErrors(errors);
-    return isValid;
-  };
-
-  const handlePostSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validatePost()) return;
-    setIsSubmitting(true);
-    try {
-      const res = await fetch('/api/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPost),
-      });
-      if (res.ok) {
-        setNewPost({ title: '', content: '', destination: '', imageUrl: '' });
-        setPreviewUrl(null);
-        fetchPosts();
-      }
-    } catch (error) {
-      console.error('Error creating post:', error);
-    } finally {
-      setIsSubmitting(false);
+  const requireAuth = () => {
+    if (!session) {
+      window.location.href = "/login?callbackUrl=/community";
+      return false;
     }
+    return true;
   };
 
   const handleLike = async (postId: string) => {
-    // Optimistic UI update
-    setPosts(posts.map(p => {
-      if (p._id === postId) {
-        return {
-          ...p,
-          hasLiked: !p.hasLiked,
-          likes: p.hasLiked ? p.likes - 1 : p.likes + 1
-        };
-      }
-      return p;
-    }));
-
+    if (!requireAuth()) return;
+    setPosts((prev) =>
+      prev.map((p) =>
+        p._id === postId
+          ? {
+              ...p,
+              hasLiked: !p.hasLiked,
+              likes: p.hasLiked ? p.likes - 1 : p.likes + 1,
+            }
+          : p
+      )
+    );
     try {
-      await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
-    } catch (error) {
-      console.error('Error toggling like:', error);
-      fetchPosts(); // Revert on error
+      await fetch(`/api/posts/${postId}/like`, { method: "POST" });
+    } catch {
+      fetchPosts();
     }
   };
 
   const handleCommentSubmit = async (postId: string) => {
-    if (!commentText.trim()) return;
-
+    if (!session || !commentText.trim()) return;
     try {
       const res = await fetch(`/api/posts/${postId}/comment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: commentText }),
       });
-      
       if (res.ok) {
         const data = await res.json();
-        // Update post with new comment
-        setPosts(posts.map(p => {
-          if (p._id === postId) {
-            return {
-              ...p,
-              comments: [...p.comments, data.comment],
-              commentCount: data.commentCount
-            };
-          }
-          return p;
-        }));
-        setCommentText('');
+        setPosts((prev) =>
+          prev.map((p) =>
+            p._id === postId
+              ? {
+                  ...p,
+                  comments: [...p.comments, data.comment],
+                  commentCount: data.commentCount,
+                }
+              : p
+          )
+        );
+        setCommentText("");
+        fetchStats();
       }
-    } catch (error) {
-      console.error('Error adding comment:', error);
+    } catch {
+      /* ignore */
     }
   };
 
@@ -168,222 +150,332 @@ export default function CommunityPage() {
     setTimeout(() => setCopyStatus(null), 2000);
   };
 
-  return (
-    <div className="min-h-screen bg-stone-950 pt-32 pb-20">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-5xl md:text-7xl font-serif font-bold text-white mb-4">
-            Travel <span className="text-amber-500">Community</span>
-          </h1>
-          <p className="text-xl text-stone-400">
-            Share your experiences, inspire others, and discover travel stories from around the world.
-          </p>
+  const clearFilters = () => {
+    setSearch("");
+    setDestinationFilter("");
+    setTripTypeFilter("");
+    setTagFilter("");
+    setSort("recent");
+  };
+
+  const hasActiveFilters =
+    debouncedSearch || destinationFilter || tripTypeFilter || tagFilter;
+
+  const filterSidebar = (
+    <div className="space-y-6">
+      <div>
+        <label className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2 block">
+          Search
+        </label>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-500" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Stories, places..."
+            className="w-full rounded-xl border border-stone-800 bg-stone-950 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-stone-600 focus:outline-none focus:ring-2 focus:ring-amber-600/50"
+          />
         </div>
+      </div>
 
-        {/* Create Post */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-12 bg-stone-900 border border-stone-800 rounded-3xl p-8"
+      <div>
+        <label className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2 block">
+          Sort by
+        </label>
+        <div className="flex flex-col gap-1">
+          {SORT_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setSort(opt.value)}
+              className={`rounded-lg px-3 py-2 text-left text-sm transition ${
+                sort === opt.value
+                  ? "bg-amber-600/20 text-amber-400 font-medium"
+                  : "text-stone-400 hover:bg-stone-800"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2 block">
+          Trip type
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setTripTypeFilter("")}
+            className={`rounded-full px-3 py-1 text-xs border transition ${
+              !tripTypeFilter
+                ? "bg-amber-600 text-black border-amber-600 font-medium"
+                : "border-stone-700 text-stone-400"
+            }`}
+          >
+            All
+          </button>
+          {TRIP_TYPES.filter((t) => t !== "Other").map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTripTypeFilter(tripTypeFilter === t ? "" : t)}
+              className={`rounded-full px-3 py-1 text-xs border transition ${
+                tripTypeFilter === t
+                  ? "bg-amber-600/20 border-amber-600 text-amber-400"
+                  : "border-stone-700 text-stone-400 hover:border-stone-500"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {stats && stats.topDestinations.length > 0 && (
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2 block">
+            Popular destinations
+          </label>
+          <div className="flex flex-col gap-1">
+            {stats.topDestinations.map((d) => (
+              <button
+                key={d.name}
+                type="button"
+                onClick={() =>
+                  setDestinationFilter(
+                    destinationFilter === d.name ? "" : d.name
+                  )
+                }
+                className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
+                  destinationFilter === d.name
+                    ? "bg-amber-600/20 text-amber-400"
+                    : "text-stone-400 hover:bg-stone-800"
+                }`}
+              >
+                <span className="flex items-center gap-2 truncate">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" />
+                  {d.name}
+                </span>
+                <span className="text-xs text-stone-600">{d.count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {stats && stats.trendingTags.length > 0 && (
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2 block">
+            Trending tags
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {stats.trendingTags.map((t) => (
+              <button
+                key={t.name}
+                type="button"
+                onClick={() => setTagFilter(tagFilter === t.name ? "" : t.name)}
+                className={`rounded-full px-2.5 py-1 text-xs border transition ${
+                  tagFilter === t.name
+                    ? "bg-amber-600/20 border-amber-600 text-amber-400"
+                    : "border-stone-800 text-stone-500 hover:text-stone-300"
+                }`}
+              >
+                #{t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {hasActiveFilters && (
+        <button
+          type="button"
+          onClick={clearFilters}
+          className="w-full flex items-center justify-center gap-2 rounded-xl border border-stone-700 py-2 text-sm text-stone-400 hover:bg-stone-800 transition"
         >
-          <h2 className="text-xl font-bold text-white mb-6">Share Your Journey</h2>
-          <form onSubmit={handlePostSubmit} className="space-y-4">
-            <div>
-              <input
-                type="text"
-                placeholder="Journey title..."
-                value={newPost.title}
-                onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                required
-                className={`w-full px-4 py-3 bg-stone-950 border ${postErrors.title ? 'border-red-500' : 'border-stone-800 focus:border-amber-600'} rounded-xl text-white placeholder:text-stone-600 focus:outline-none transition-colors`}
-              />
-              {postErrors.title && <p className="mt-1 text-xs text-red-500">{postErrors.title}</p>}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                type="text"
-                placeholder="Destination (e.g. Makkah, Paris)"
-                value={newPost.destination}
-                onChange={(e) => setNewPost({ ...newPost, destination: e.target.value })}
-                className="w-full px-4 py-3 bg-stone-950 border border-stone-800 rounded-xl text-white placeholder:text-stone-600 focus:outline-none focus:border-amber-600"
-              />
-              <div className="relative w-full">
-                <input
-                  type="file"
-                  id="image-upload"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="image-upload"
-                  className="w-full px-4 py-3 bg-stone-950 border border-stone-800 rounded-xl text-stone-400 hover:text-white cursor-pointer hover:border-amber-600 flex items-center justify-center gap-2 transition-all"
-                >
-                  <ImageIcon className="h-5 w-5" />
-                  <span>{previewUrl ? 'Change Image' : 'Upload Image (Optional)'}</span>
-                </label>
+          <X className="h-4 w-4" />
+          Clear filters
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-stone-950">
+      {/* Hero */}
+      <section className="relative pt-28 pb-16 overflow-hidden border-b border-stone-800">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-900/20 via-stone-950 to-stone-950" />
+        <div className="absolute inset-0 opacity-30 bg-[url('https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600&q=80')] bg-cover bg-center" />
+        <div className="absolute inset-0 bg-stone-950/80" />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-600/40 bg-amber-600/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-amber-400 mb-4">
+                <Compass className="h-3.5 w-3.5" />
+                Travel Community
               </div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-bold text-white leading-tight">
+                Stories from{" "}
+                <span className="text-amber-500">real travelers</span>
+              </h1>
+              <p className="mt-4 text-lg text-stone-300 max-w-xl">
+                Share Umrah journeys, family tours, and travel tips. Learn from
+                people who have been there.
+              </p>
             </div>
 
-            {previewUrl && (
-              <div className="relative w-full h-48 rounded-xl overflow-hidden border border-stone-800">
-                <Image width={800} height={800} src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={removeImage}
-                  className="absolute top-2 right-2 p-2 bg-black/60 rounded-full text-white hover:bg-black transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+            {stats && (
+              <div className="grid grid-cols-3 gap-3 sm:gap-4 shrink-0">
+                {[
+                  { icon: Users, label: "Stories", value: stats.totalPosts },
+                  { icon: Heart, label: "Likes", value: stats.totalLikes },
+                  {
+                    icon: MessageCircle,
+                    label: "Comments",
+                    value: stats.totalComments,
+                  },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div
+                    key={label}
+                    className="rounded-2xl border border-stone-800 bg-stone-900/60 backdrop-blur px-4 py-4 text-center"
+                  >
+                    <Icon className="h-5 w-5 text-amber-500 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-white">{value}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-500 mt-0.5">
+                      {label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
+        <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-10">
+          {/* Desktop sidebar */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-28 rounded-2xl border border-stone-800 bg-stone-900/50 p-6">
+              <div className="flex items-center gap-2 mb-6 text-white font-semibold">
+                <Filter className="h-4 w-4 text-amber-500" />
+                Filters
+              </div>
+              {filterSidebar}
+            </div>
+          </aside>
+
+          {/* Main column */}
+          <div className="min-w-0 space-y-8">
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+              className="lg:hidden flex w-full items-center justify-center gap-2 rounded-xl border border-stone-800 bg-stone-900 py-3 text-sm font-medium text-stone-300"
+            >
+              <Filter className="h-4 w-4" />
+              {mobileFiltersOpen ? "Hide filters" : "Show filters"}
+            </button>
+
+            {mobileFiltersOpen && (
+              <div className="lg:hidden rounded-2xl border border-stone-800 bg-stone-900/50 p-6">
+                {filterSidebar}
               </div>
             )}
 
-            <div>
-              <textarea
-                placeholder="Tell your travel story..."
-                value={newPost.content}
-                onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                required
-                rows={4}
-                className={`w-full px-4 py-3 bg-stone-950 border ${postErrors.content ? 'border-red-500' : 'border-stone-800 focus:border-amber-600'} rounded-xl text-white placeholder:text-stone-600 focus:outline-none resize-none transition-colors`}
+            {status === "authenticated" ? (
+              <CreatePostForm
+                onSuccess={() => {
+                  fetchPosts();
+                  fetchStats();
+                }}
               />
-              {postErrors.content && <p className="mt-1 text-xs text-red-500">{postErrors.content}</p>}
-            </div>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 bg-amber-600 text-black font-bold rounded-xl hover:bg-amber-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Sharing...' : 'Share Story'}
-            </button>
-          </form>
-        </motion.div>
-
-        {/* Posts Feed */}
-        {loading ? (
-          <div className="text-center py-20">
-            <p className="text-stone-400">Loading community stories...</p>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {posts.map((post, idx) => (
-              <motion.div
-                key={post._id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                className="bg-stone-900 border border-stone-800 rounded-3xl overflow-hidden hover:border-amber-600/50 transition-all"
-              >
-                {post.imageUrl && (
-                  <Image width={800} height={800} src={post.imageUrl}
-                    alt={post.title}
-                    className="w-full h-64 object-cover" />
-                )}
-
-                <div className="p-8" id={`post-${post._id}`}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-full bg-amber-600 flex items-center justify-center">
-                      <User className="h-5 w-5 text-black" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-white">{post.author}</p>
-                      <p className="text-xs text-stone-500">
-                        {new Date(post.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
+            ) : (
+              <div className="rounded-3xl border border-amber-600/30 bg-gradient-to-r from-amber-600/10 to-stone-900 p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <Sparkles className="h-8 w-8 text-amber-500 shrink-0" />
+                  <div>
+                    <h2 className="text-lg font-bold text-white">
+                      Join the conversation
+                    </h2>
+                    <p className="text-sm text-stone-400 mt-1">
+                      Sign in to share your travel story, like posts, and comment.
+                    </p>
                   </div>
-
-                  <h3 className="text-2xl font-bold text-white mb-2">{post.title}</h3>
-
-                  {post.destination && (
-                    <div className="flex items-center gap-2 text-stone-400 mb-4">
-                      <MapPin className="h-4 w-4 text-amber-600" />
-                      <span>{post.destination}</span>
-                    </div>
-                  )}
-
-                  <p className="text-stone-300 mb-6 line-clamp-3">{post.content}</p>
-
-                  <div className="flex gap-6 pt-6 border-t border-stone-800">
-                    <button 
-                      onClick={() => handleLike(post._id)}
-                      className={`flex items-center gap-2 transition-colors ${post.hasLiked ? 'text-amber-500' : 'text-stone-400 hover:text-amber-500'}`}
-                    >
-                      <Heart className="h-5 w-5" fill={post.hasLiked ? 'currentColor' : 'none'} />
-                      <span className="text-sm">{post.likes}</span>
-                    </button>
-                    <button 
-                      onClick={() => setActiveCommentId(activeCommentId === post._id ? null : post._id)}
-                      className="flex items-center gap-2 text-stone-400 hover:text-amber-500 transition-colors"
-                    >
-                      <MessageCircle className="h-5 w-5" />
-                      <span className="text-sm">{post.commentCount}</span>
-                    </button>
-                    <button 
-                      onClick={() => handleShare(post._id)}
-                      className="flex items-center gap-2 text-stone-400 hover:text-amber-500 transition-colors relative"
-                    >
-                      <Share2 className="h-5 w-5" />
-                      {copyStatus === post._id && (
-                        <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-amber-600 text-black text-xs px-2 py-1 rounded font-bold whitespace-nowrap">
-                          Copied!
-                        </span>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Comments Section */}
-                  {activeCommentId === post._id && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="mt-6 pt-6 border-t border-stone-800"
-                    >
-                      <div className="space-y-4 mb-4 max-h-60 overflow-y-auto pr-2">
-                        {post.comments.map((comment, idx) => (
-                          <div key={comment._id || idx} className="bg-stone-950 p-4 rounded-xl">
-                            <p className="text-sm font-semibold text-white mb-1">{comment.authorName}</p>
-                            <p className="text-sm text-stone-300">{comment.text}</p>
-                          </div>
-                        ))}
-                        {post.comments.length === 0 && (
-                          <p className="text-stone-500 text-sm text-center py-2">No comments yet. Be the first!</p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Write a comment..."
-                          value={commentText}
-                          onChange={(e) => setCommentText(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleCommentSubmit(post._id);
-                          }}
-                          className="flex-1 px-4 py-2 bg-stone-950 border border-stone-800 rounded-lg text-white placeholder:text-stone-600 focus:outline-none focus:border-amber-600 text-sm"
-                        />
-                        <button
-                          onClick={() => handleCommentSubmit(post._id)}
-                          disabled={!commentText.trim()}
-                          className="px-4 py-2 bg-amber-600 text-black font-bold rounded-lg hover:bg-amber-500 transition-all disabled:opacity-50 text-sm"
-                        >
-                          Post
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
+                <Link
+                  href="/login?callbackUrl=/community"
+                  className="shrink-0 rounded-full bg-amber-600 px-6 py-2.5 text-center text-sm font-bold text-black hover:bg-amber-500 transition"
+                >
+                  Sign in to post
+                </Link>
+              </div>
+            )}
 
-        {!loading && posts.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-stone-400 text-lg">Be the first to share your travel story!</p>
+            {/* Guidelines */}
+            <div className="rounded-2xl border border-stone-800/80 bg-stone-900/30 px-5 py-4 text-sm text-stone-500">
+              <span className="text-amber-500 font-medium">Community guidelines:</span>{" "}
+              Be respectful, share honest experiences, and avoid spam. Photos
+              should be your own or properly credited.
+            </div>
+
+            {loading ? (
+              <div className="space-y-6">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="animate-pulse rounded-3xl border border-stone-800 bg-stone-900 h-64"
+                  />
+                ))}
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="text-center py-20 rounded-3xl border border-dashed border-stone-800">
+                <Compass className="h-12 w-12 text-stone-700 mx-auto mb-4" />
+                <p className="text-lg text-stone-400">
+                  {hasActiveFilters
+                    ? "No stories match your filters."
+                    : "Be the first to share a travel story!"}
+                </p>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="mt-4 text-amber-500 text-sm font-medium hover:underline"
+                  >
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {posts.map((post, idx) => (
+                  <CommunityPostCard
+                    key={post._id}
+                    post={post}
+                    index={idx}
+                    copyStatus={copyStatus}
+                    activeCommentId={activeCommentId}
+                    commentText={commentText}
+                    onLike={handleLike}
+                    onToggleComments={(id) => {
+                      if (!requireAuth()) return;
+                      setActiveCommentId(activeCommentId === id ? null : id);
+                    }}
+                    onShare={handleShare}
+                    onCommentTextChange={setCommentText}
+                    onCommentSubmit={handleCommentSubmit}
+                    onTagClick={(tag) => {
+                      setTagFilter(tag);
+                      setMobileFiltersOpen(false);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

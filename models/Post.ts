@@ -16,7 +16,13 @@ const postSchema = new Schema(
       createdAt: { type: Date, default: Date.now }
     }],
     tags: { type: [String], default: [] },
-    isPublished: { type: Boolean, default: true }
+    tripType: {
+      type: String,
+      enum: ['Umrah', 'Hajj', 'International', 'Domestic', 'Adventure', 'Other'],
+      default: 'Other',
+    },
+    rating: { type: Number, min: 1, max: 5, default: null },
+    isPublished: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
