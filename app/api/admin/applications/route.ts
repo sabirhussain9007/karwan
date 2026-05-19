@@ -138,7 +138,11 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
-    const application = await Application.findByIdAndDelete(id);
+    if (!id) {
+      return NextResponse.json({ error: "Application id is required" }, { status: 400 });
+    }
+
+    const application = await Application.findById(id);
     if (!application) {
       return NextResponse.json(
         { error: "Application not found" },
@@ -146,14 +150,27 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await Notification.create({
-      userId: application.userId,
-      title: "Application Deleted",
-      message: `Your application for ${application.serviceType} has been deleted by an administrator.`,
-      type: "warning"
+    const userId = application.userId;
+    const serviceType = application.serviceType;
+
+    await Notification.deleteMany({ relatedApplicationId: id });
+
+    await Booking.deleteMany({
+      userId,
+      serviceType,
+      totalAmount: application.totalAmount,
     });
 
-    return NextResponse.json({ message: "Application deleted" });
+    await Application.findByIdAndDelete(id);
+
+    await Notification.create({
+      userId,
+      title: "Booking request closed",
+      message: `Your ${serviceType} request has been removed. You can submit a new application anytime from our services pages if you still need assistance.`,
+      type: "info",
+    });
+
+    return NextResponse.json({ message: "Booking request removed successfully" });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to delete application" },

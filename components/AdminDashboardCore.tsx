@@ -77,6 +77,7 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
   const [showModal, setShowModal] = useState(false);
   const [rejectingAppId, setRejectingAppId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [deletingAppId, setDeletingAppId] = useState<string | null>(null);
 
   // Form states
   const [destForm, setDestForm] = useState({ name: "", country: "", description: "", imageUrl: "", colorGradient: "" });
@@ -230,13 +231,14 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
   };
 
   const handleDeleteApplication = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this application?")) return;
     try {
       const res = await fetch(`/api/admin/applications?id=${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete application");
+      if (!res.ok) throw new Error("Failed to remove booking request");
+      setSuccessMsg("Booking request removed. Related alerts were cleared for the user.");
       fetchApplications();
+      setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error deleting application");
+      setError(err instanceof Error ? err.message : "Error removing booking request");
     }
   };
 
@@ -703,10 +705,10 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
                             </>
                           )}
                           <button
-                            onClick={() => handleDeleteApplication(app._id)}
+                            onClick={() => setDeletingAppId(app._id)}
                             className="flex items-center gap-1 px-4 py-2 bg-slate-600 text-white rounded hover:bg-slate-700 transition text-sm font-medium"
                           >
-                            <Trash2 size={16} /> Delete
+                            <Trash2 size={16} /> Remove
                           </button>
                         </div>
                       </div>
@@ -936,6 +938,50 @@ export default function AdminDashboardCore({ initialTab = "applications" }: { in
           )}
         </div>
       </div>
+
+      {/* Remove request confirmation */}
+      {deletingAppId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl border border-slate-700 max-w-md w-full shadow-2xl">
+            <div className="p-6 border-b border-slate-700 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Trash2 className="text-amber-500" size={24} /> Remove booking request
+              </h2>
+              <button
+                onClick={() => setDeletingAppId(null)}
+                className="text-slate-400 hover:text-white transition"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-slate-300 text-sm leading-relaxed">
+                This will remove the request from the dashboard, clear old alerts for this
+                booking, and notify the customer that their request was closed. They can
+                submit a new application later if needed.
+              </p>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeletingAppId(null)}
+                  className="flex-1 px-4 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    handleDeleteApplication(deletingAppId);
+                    setDeletingAppId(null);
+                  }}
+                  className="flex-1 px-4 py-3 bg-amber-600 text-black rounded-lg hover:bg-amber-500 transition font-medium"
+                >
+                  Remove request
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rejection Modal */}
       {rejectingAppId && (

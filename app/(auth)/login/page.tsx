@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, Loader2 } from "lucide-react";
@@ -23,6 +23,7 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -33,6 +34,13 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    if (status !== "authenticated") return;
+
+    const role = (session?.user as { role?: string })?.role;
+    router.replace(role === "admin" ? "/admin" : "/");
+  }, [status, session, router]);
+
+  useEffect(() => {
     const urlError = searchParams.get("error");
     if (urlError === "CredentialsSignin") {
       setError("Invalid email or password");
@@ -40,6 +48,14 @@ function LoginForm() {
       setError("An error occurred during authentication");
     }
   }, [searchParams]);
+
+  if (status === "loading" || status === "authenticated") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin w-8 h-8 text-emerald-600" />
+      </div>
+    );
+  }
 
   const validateForm = () => {
     const errors: { email?: string; password?: string } = {};
