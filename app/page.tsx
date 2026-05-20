@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'motion/react';
-import { Search, MapPin, Calendar, Users, Star, ArrowRight, Plane, Shield, Headphones, Send } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Star, ArrowRight, Plane, Shield, Headphones } from 'lucide-react';
 import DestinationCombobox from '@/components/DestinationCombobox';
+import JourneyApplicationModal from '@/components/JourneyApplicationModal';
 import { formatCurrency } from '@/lib/utils';
 import { CATEGORIES } from '@/lib/constants';
 import { useSession } from 'next-auth/react';
@@ -36,129 +37,36 @@ const Home = () => {
     fetchFeatured();
   }, []);
   
-  // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    numberOfPassengers: 1,
-    travelDate: '',
-    specialRequests: ''
-  });
-  const [validationErrors, setValidationErrors] = useState<{fullName?: string, email?: string, phone?: string, numberOfPassengers?: string, travelDate?: string}>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<{
+    title: string;
+    category: string;
+    price: number;
+    imageUrl?: string;
+  } | null>(null);
 
   const [searchDestination, setSearchDestination] = useState("");
   const [selectedDestinationId, setSelectedDestinationId] = useState<string | null>(null);
   const [searchWindow, setSearchWindow] = useState("Next 30 Days");
 
-  const handleApplyClick = (pkg: any) => {
+  const handleApplyClick = (pkg: {
+    title: string;
+    category: string;
+    price: number;
+    imageUrl?: string;
+    images?: string[];
+  }) => {
     if (!session) {
       router.push('/login');
       return;
     }
-    
-    setSelectedPackage(pkg);
-    setFormData({
-      ...formData,
-      fullName: session.user?.name || '',
-      email: session.user?.email || '',
+    setSelectedPackage({
+      title: pkg.title,
+      category: pkg.category,
+      price: pkg.price,
+      imageUrl: pkg.imageUrl || pkg.images?.[0],
     });
-    
     setIsModalOpen(true);
-  };
-
-  const validateForm = () => {
-    const errors: {fullName?: string, email?: string, phone?: string, numberOfPassengers?: string, travelDate?: string} = {};
-    let isValid = true;
-
-    if (!formData.fullName.trim()) {
-      errors.fullName = "Full Name is required";
-      isValid = false;
-    }
-
-    if (!formData.email.trim()) {
-      errors.email = "Email is required";
-      isValid = false;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = "Invalid email format";
-      isValid = false;
-    }
-
-    if (!formData.phone.trim()) {
-      errors.phone = "Phone is required";
-      isValid = false;
-    } else if (!/^03\d{9}$/.test(formData.phone)) {
-      errors.phone = "Phone number must be in format 03XXXXXXXXX";
-      isValid = false;
-    }
-
-    if (formData.numberOfPassengers < 1) {
-      errors.numberOfPassengers = "Must be at least 1 passenger";
-      isValid = false;
-    }
-
-    if (formData.travelDate) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const selectedDate = new Date(formData.travelDate);
-      if (selectedDate < today) {
-        errors.travelDate = "Travel date cannot be in the past";
-        isValid = false;
-      }
-    }
-
-    setValidationErrors(errors);
-    return isValid;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    setIsSubmitting(true);
-    
-    try {
-      const payload = {
-        serviceType: selectedPackage.category,
-        totalAmount: selectedPackage.price * formData.numberOfPassengers,
-        applicationData: {
-          fullName: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          numberOfPassengers: formData.numberOfPassengers,
-          travelDate: formData.travelDate,
-          specialRequests: formData.specialRequests + `\n\nPackage: ${selectedPackage.title}`
-        }
-      };
-      
-      const res = await fetch('/api/user/applications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to submit application');
-      }
-      
-      setSubmitSuccess(true);
-      setTimeout(() => {
-        setIsModalOpen(false);
-        setSubmitSuccess(false);
-        setSelectedPackage(null);
-      }, 3000);
-      
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   return (
@@ -380,140 +288,18 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Application Modal */}
-      {isModalOpen && selectedPackage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-stone-900 border border-stone-800 rounded-3xl p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto"
-          >
-            {submitSuccess ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Send size={32} />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-4">Application Submitted!</h3>
-                <p className="text-stone-400">
-                  Thank you for your interest in {selectedPackage.title}. Our team will review your application and contact you soon.
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-2xl font-bold text-white">Apply for {selectedPackage.title}</h3>
-                  <button 
-                    onClick={() => setIsModalOpen(false)}
-                    className="text-stone-500 hover:text-white transition-colors"
-                  >
-                    ✕
-                  </button>
-                </div>
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-stone-400 mb-1">Full Name</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={formData.fullName}
-                      onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                      className={`w-full bg-stone-950 border ${validationErrors.fullName ? 'border-red-500 focus:border-red-400' : 'border-stone-800 focus:border-amber-500'} rounded-xl px-4 py-3 text-white focus:outline-none transition-colors`}
-                    />
-                    {validationErrors.fullName && <p className="mt-1 text-xs text-red-500">{validationErrors.fullName}</p>}
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-stone-400 mb-1">Email</label>
-                      <input 
-                        type="email" 
-                        required
-                        value={formData.email}
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
-                        className={`w-full bg-stone-950 border ${validationErrors.email ? 'border-red-500 focus:border-red-400' : 'border-stone-800 focus:border-amber-500'} rounded-xl px-4 py-3 text-white focus:outline-none transition-colors`}
-                      />
-                      {validationErrors.email && <p className="mt-1 text-xs text-red-500">{validationErrors.email}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-stone-400 mb-1">Phone</label>
-                      <input 
-                        type="tel" 
-                        required
-                        placeholder="03XXXXXXXXX"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        className={`w-full bg-stone-950 border ${validationErrors.phone ? 'border-red-500 focus:border-red-400' : 'border-stone-800 focus:border-amber-500'} rounded-xl px-4 py-3 text-white focus:outline-none transition-colors`}
-                      />
-                      {validationErrors.phone && <p className="mt-1 text-xs text-red-500">{validationErrors.phone}</p>}
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-stone-400 mb-1">Passengers</label>
-                      <input 
-                        type="number" 
-                        min="1"
-                        required
-                        value={formData.numberOfPassengers}
-                        onChange={(e) => setFormData({...formData, numberOfPassengers: parseInt(e.target.value)})}
-                        className={`w-full bg-stone-950 border ${validationErrors.numberOfPassengers ? 'border-red-500 focus:border-red-400' : 'border-stone-800 focus:border-amber-500'} rounded-xl px-4 py-3 text-white focus:outline-none transition-colors`}
-                      />
-                      {validationErrors.numberOfPassengers && <p className="mt-1 text-xs text-red-500">{validationErrors.numberOfPassengers}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-stone-400 mb-1">Estimated Travel Date</label>
-                      <input 
-                        type="date" 
-                        value={formData.travelDate}
-                        onChange={(e) => setFormData({...formData, travelDate: e.target.value})}
-                        className={`w-full bg-stone-950 border ${validationErrors.travelDate ? 'border-red-500 focus:border-red-400' : 'border-stone-800 focus:border-amber-500'} rounded-xl px-4 py-3 text-white focus:outline-none transition-colors [color-scheme:dark]`}
-                      />
-                      {validationErrors.travelDate && <p className="mt-1 text-xs text-red-500">{validationErrors.travelDate}</p>}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-stone-400 mb-1">Special Requests</label>
-                    <textarea 
-                      rows={4}
-                      value={formData.specialRequests}
-                      onChange={(e) => setFormData({...formData, specialRequests: e.target.value})}
-                      className="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-colors"
-                      placeholder="Any specific places you want to visit, hotel preferences, etc."
-                    ></textarea>
-                  </div>
-
-                  <div className="bg-stone-800/50 p-4 rounded-xl mt-4">
-                    <div className="flex justify-between text-stone-300 text-sm mb-2">
-                      <span>Price per person</span>
-                      <span>{formatCurrency(selectedPackage.price)}</span>
-                    </div>
-                    <div className="flex justify-between text-stone-300 text-sm mb-2">
-                      <span>Passengers</span>
-                      <span>{formData.numberOfPassengers}</span>
-                    </div>
-                    <div className="flex justify-between text-white font-bold border-t border-stone-700 pt-2 mt-2">
-                      <span>Total Estimated</span>
-                      <span className="text-amber-500">{formatCurrency(selectedPackage.price * formData.numberOfPassengers)}</span>
-                    </div>
-                  </div>
-                  
-                  <button 
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-4 mt-4 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-black font-bold rounded-xl transition-colors uppercase tracking-widest text-sm"
-                  >
-                    {isSubmitting ? 'Submitting...' : 'Submit Application'}
-                  </button>
-                </form>
-              </>
-            )}
-          </motion.div>
-        </div>
-      )}
-
+      <JourneyApplicationModal
+        open={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedPackage(null);
+        }}
+        packageInfo={selectedPackage}
+        userName={session?.user?.name}
+        userEmail={session?.user?.email}
+        initialDestination={searchDestination}
+        initialTravelWindow={searchWindow}
+      />
     </div>
   );
 }

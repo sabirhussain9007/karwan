@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useRouter } from "next/navigation";
-import { Calendar, DollarSign, CheckCircle2, Clock, XCircle, Eye, Download, X } from "lucide-react";
+import { Calendar, DollarSign, CheckCircle2, Clock, XCircle, Eye, Download } from "lucide-react";
+import FormModal from "@/components/FormModal";
+import { Field, inputClass } from "@/components/journey-application/fields";
 
 type Application = {
   _id: string;
@@ -552,195 +554,172 @@ export default function UserDashboard() {
         </div>
       </div>
 
-      {/* Booking Modal */}
-      {showBookingModal && (
-        <Modal onClose={() => setShowBookingModal(false)}>
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-2xl font-bold mb-4">
-              {editingId ? "Edit Booking" : "Add Booking"}
-            </h3>
-            <form onSubmit={editingId ? handleUpdateBooking : handleAddBooking} className="space-y-4">
-              <div>
-                <input
-                  type="text"
-                  placeholder="Package name"
-                  value={bookingForm.package}
-                  onChange={(e) => setBookingForm({ ...bookingForm, package: e.target.value })}
-                  required
-                  className={`w-full px-4 py-2 border ${bookingErrors.package ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
-                />
-                {bookingErrors.package && <p className="mt-1 text-xs text-red-500">{bookingErrors.package}</p>}
-              </div>
-              <div>
-                <input
-                  type="number"
-                  placeholder="Number of guests"
-                  value={bookingForm.numberOfGuests}
-                  onChange={(e) => setBookingForm({ ...bookingForm, numberOfGuests: parseInt(e.target.value) })}
-                  required
-                  className={`w-full px-4 py-2 border ${bookingErrors.numberOfGuests ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
-                />
-                {bookingErrors.numberOfGuests && <p className="mt-1 text-xs text-red-500">{bookingErrors.numberOfGuests}</p>}
-              </div>
-              <div>
-                <input
-                  type="date"
-                  value={bookingForm.travelDate}
-                  onChange={(e) => setBookingForm({ ...bookingForm, travelDate: e.target.value })}
-                  required
-                  className={`w-full px-4 py-2 border ${bookingErrors.travelDate ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
-                />
-                {bookingErrors.travelDate && <p className="mt-1 text-xs text-red-500">{bookingErrors.travelDate}</p>}
-              </div>
-              <div>
-                <input
-                  type="number"
-                  placeholder="Total price"
-                  value={bookingForm.totalPrice}
-                  onChange={(e) => setBookingForm({ ...bookingForm, totalPrice: parseFloat(e.target.value) })}
-                  required
-                  className={`w-full px-4 py-2 border ${bookingErrors.totalPrice ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
-                />
-                {bookingErrors.totalPrice && <p className="mt-1 text-xs text-red-500">{bookingErrors.totalPrice}</p>}
-              </div>
-              <button
-                type="submit"
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                {editingId ? "Update Booking" : "Add Booking"}
-              </button>
-            </form>
-          </div>
-        </Modal>
-      )}
+      <FormModal
+        open={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
+        title={editingId ? "Edit booking" : "Add booking"}
+        subtitle="Track a trip you have booked with us"
+      >
+        <form onSubmit={editingId ? handleUpdateBooking : handleAddBooking} className="space-y-4">
+          <Field label="Package name" error={bookingErrors.package}>
+            <input
+              type="text"
+              value={bookingForm.package}
+              onChange={(e) => setBookingForm({ ...bookingForm, package: e.target.value })}
+              required
+              className={inputClass(!!bookingErrors.package)}
+            />
+          </Field>
+          <Field label="Number of guests" error={bookingErrors.numberOfGuests}>
+            <input
+              type="number"
+              min={1}
+              value={bookingForm.numberOfGuests}
+              onChange={(e) =>
+                setBookingForm({
+                  ...bookingForm,
+                  numberOfGuests: parseInt(e.target.value, 10) || 1,
+                })
+              }
+              required
+              className={inputClass(!!bookingErrors.numberOfGuests)}
+            />
+          </Field>
+          <Field label="Travel date" error={bookingErrors.travelDate}>
+            <input
+              type="date"
+              value={bookingForm.travelDate}
+              onChange={(e) =>
+                setBookingForm({ ...bookingForm, travelDate: e.target.value })
+              }
+              required
+              className={`${inputClass(!!bookingErrors.travelDate)} [color-scheme:dark]`}
+            />
+          </Field>
+          <Field label="Total price (PKR)" error={bookingErrors.totalPrice}>
+            <input
+              type="number"
+              min={0}
+              value={bookingForm.totalPrice}
+              onChange={(e) =>
+                setBookingForm({
+                  ...bookingForm,
+                  totalPrice: parseFloat(e.target.value) || 0,
+                })
+              }
+              required
+              className={inputClass(!!bookingErrors.totalPrice)}
+            />
+          </Field>
+          <button
+            type="submit"
+            className="w-full rounded-xl bg-amber-600 py-3 text-sm font-bold uppercase tracking-widest text-black hover:bg-amber-500 transition"
+          >
+            {editingId ? "Update booking" : "Save booking"}
+          </button>
+        </form>
+      </FormModal>
 
-      {/* Review Modal */}
-      {showReviewModal && (
-        <Modal onClose={() => setShowReviewModal(false)}>
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-2xl font-bold mb-4">
-              {editingId ? "Edit Review" : "Add Review"}
-            </h3>
-            <form onSubmit={editingId ? handleUpdateReview : handleAddReview} className="space-y-4">
-              <div>
-                <input
-                  type="text"
-                  placeholder="Package name"
-                  value={reviewForm.package}
-                  onChange={(e) => setReviewForm({ ...reviewForm, package: e.target.value })}
-                  required
-                  className={`w-full px-4 py-2 border ${reviewErrors.package ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
-                />
-                {reviewErrors.package && <p className="mt-1 text-xs text-red-500">{reviewErrors.package}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Rating</label>
-                <select
-                  value={reviewForm.rating}
-                  onChange={(e) => setReviewForm({ ...reviewForm, rating: parseInt(e.target.value) })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                >
-                  {[5, 4, 3, 2, 1].map((r) => (
-                    <option key={r} value={r}>
-                      {r} Stars
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <textarea
-                  placeholder="Write your review..."
-                  value={reviewForm.comment}
-                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
-                  required
-                  className={`w-full px-4 py-2 border ${reviewErrors.comment ? 'border-red-400' : 'border-gray-300'} rounded-lg h-24`}
-                />
-                {reviewErrors.comment && <p className="mt-1 text-xs text-red-500">{reviewErrors.comment}</p>}
-              </div>
-              <button
-                type="submit"
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                {editingId ? "Update Review" : "Add Review"}
-              </button>
-            </form>
-          </div>
-        </Modal>
-      )}
+      <FormModal
+        open={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        title={editingId ? "Edit review" : "Add review"}
+        subtitle="Share your travel experience"
+      >
+        <form onSubmit={editingId ? handleUpdateReview : handleAddReview} className="space-y-4">
+          <Field label="Package name" error={reviewErrors.package}>
+            <input
+              type="text"
+              value={reviewForm.package}
+              onChange={(e) => setReviewForm({ ...reviewForm, package: e.target.value })}
+              required
+              className={inputClass(!!reviewErrors.package)}
+            />
+          </Field>
+          <Field label="Rating">
+            <select
+              value={reviewForm.rating}
+              onChange={(e) =>
+                setReviewForm({ ...reviewForm, rating: parseInt(e.target.value, 10) })
+              }
+              className={inputClass(false)}
+            >
+              {[5, 4, 3, 2, 1].map((r) => (
+                <option key={r} value={r}>
+                  {r} stars
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Your review" error={reviewErrors.comment}>
+            <textarea
+              rows={4}
+              value={reviewForm.comment}
+              onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+              required
+              className={`${inputClass(!!reviewErrors.comment)} resize-none`}
+            />
+          </Field>
+          <button
+            type="submit"
+            className="w-full rounded-xl bg-amber-600 py-3 text-sm font-bold uppercase tracking-widest text-black hover:bg-amber-500 transition"
+          >
+            {editingId ? "Update review" : "Post review"}
+          </button>
+        </form>
+      </FormModal>
 
-      {/* Profile Modal */}
-      {showProfileModal && (
-        <Modal onClose={() => setShowProfileModal(false)}>
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-2xl font-bold mb-4">Edit Profile</h3>
-            <form onSubmit={handleUpdateProfile} className="space-y-4">
-              <div>
-                <input
-                  type="text"
-                  placeholder="Name"
-                  value={profileForm.name}
-                  onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                  required
-                  className={`w-full px-4 py-2 border ${profileErrors.name ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
-                />
-                {profileErrors.name && <p className="mt-1 text-xs text-red-500">{profileErrors.name}</p>}
-              </div>
-              <textarea
-                placeholder="Bio"
-                value={profileForm.bio}
-                onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg h-20"
-              />
-              <div>
-                <input
-                  type="url"
-                  placeholder="Avatar URL"
-                  value={profileForm.avatar}
-                  onChange={(e) => setProfileForm({ ...profileForm, avatar: e.target.value })}
-                  className={`w-full px-4 py-2 border ${profileErrors.avatar ? 'border-red-400' : 'border-gray-300'} rounded-lg`}
-                />
-                {profileErrors.avatar && <p className="mt-1 text-xs text-red-500">{profileErrors.avatar}</p>}
-              </div>
-              <input
-                type="text"
-                placeholder="Travel preferences (comma separated)"
-                value={profileForm.travelPreferences}
-                onChange={(e) => setProfileForm({ ...profileForm, travelPreferences: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-              />
-              <button
-                type="submit"
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Update Profile
-              </button>
-            </form>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-// Modal Component
-function Modal({
-  children,
-  onClose,
-}: {
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="relative w-full max-w-md">
-        <button
-          onClick={onClose}
-          className="absolute -top-10 right-0 text-white hover:text-gray-300 z-10"
-        >
-          <X size={24} />
-        </button>
-        {children}
-      </div>
+      <FormModal
+        open={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        title="Edit profile"
+        subtitle="Update your traveler profile"
+      >
+        <form onSubmit={handleUpdateProfile} className="space-y-4">
+          <Field label="Name" error={profileErrors.name}>
+            <input
+              type="text"
+              value={profileForm.name}
+              onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+              required
+              className={inputClass(!!profileErrors.name)}
+            />
+          </Field>
+          <Field label="Bio">
+            <textarea
+              rows={3}
+              value={profileForm.bio}
+              onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
+              className={`${inputClass(false)} resize-none`}
+            />
+          </Field>
+          <Field label="Avatar URL" error={profileErrors.avatar}>
+            <input
+              type="url"
+              value={profileForm.avatar}
+              onChange={(e) => setProfileForm({ ...profileForm, avatar: e.target.value })}
+              className={inputClass(!!profileErrors.avatar)}
+            />
+          </Field>
+          <Field label="Travel preferences">
+            <input
+              type="text"
+              placeholder="Comma separated"
+              value={profileForm.travelPreferences}
+              onChange={(e) =>
+                setProfileForm({ ...profileForm, travelPreferences: e.target.value })
+              }
+              className={inputClass(false)}
+            />
+          </Field>
+          <button
+            type="submit"
+            className="w-full rounded-xl bg-amber-600 py-3 text-sm font-bold uppercase tracking-widest text-black hover:bg-amber-500 transition"
+          >
+            Update profile
+          </button>
+        </form>
+      </FormModal>
     </div>
   );
 }

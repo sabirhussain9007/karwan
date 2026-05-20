@@ -1,12 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, AlertCircle } from "lucide-react";
+import { ArrowLeft, Send, AlertCircle, Loader2, Shield } from "lucide-react";
 import Link from "next/link";
+import { motion } from "motion/react";
+import { formatCurrency } from "@/lib/utils";
+import { Field, Chip, inputClass, SectionTitle } from "@/components/journey-application/fields";
 
-type ServiceType = 'Umrah' | 'Hajj' | 'International Tours' | 'Domestic Tours' | 'Visa Services' | 'Ticketing' | 'Car Rental';
+type ServiceType =
+  | "Umrah"
+  | "Hajj"
+  | "International Tours"
+  | "Domestic Tours"
+  | "Visa Services"
+  | "Ticketing"
+  | "Car Rental";
 
 type ApplicationFormProps = {
   serviceType: ServiceType;
@@ -14,6 +24,9 @@ type ApplicationFormProps = {
   description: string;
   basePrice: number;
 };
+
+const CONTACT_OPTIONS = ["Phone", "WhatsApp", "Email"] as const;
+const HOTEL_OPTIONS = ["Budget", "Standard", "Premium", "Luxury"] as const;
 
 export default function ApplicationForm({
   serviceType,
@@ -34,36 +47,66 @@ export default function ApplicationForm({
     travelDate: "",
     returnDate: "",
     numberOfPassengers: 1,
+    childrenCount: 0,
+    flexibleDates: false,
     mealPlan: "Standard",
     hotelPreference: "Standard",
     transportPreference: "Bus",
+    contactPreference: "Phone",
     specialRequests: "",
     visaRequired: false,
   });
 
-  const [passengers, setPassengers] = useState<{ name: string; relation: string; dob: string; passport: string }[]>([]);
+  const [passengers, setPassengers] = useState<
+    { name: string; relation: string; dob: string; passport: string }[]
+  >([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  // Auth check
+  const adultLabel = serviceType === "Car Rental" ? "Vehicles" : "Adults";
+
+  useEffect(() => {
+    if (session?.user) {
+      setFormData((prev) => ({
+        ...prev,
+        fullName: session.user?.name || prev.fullName,
+        email: session.user?.email || prev.email,
+      }));
+    }
+  }, [session]);
+
   if (status === "unauthenticated") {
     router.push("/login");
     return null;
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen bg-stone-950 flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-amber-500" />
+      </div>
+    );
+  }
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name, value, type } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-      [name === 'numberOfPassengers' ? name : '']: type === 'number' ? parseInt(value) : undefined,
+      [name]:
+        type === "checkbox"
+          ? (e.target as HTMLInputElement).checked
+          : name === "numberOfPassengers" || name === "childrenCount"
+            ? parseInt(value, 10) || 0
+            : value,
     }));
   };
 
   const handleAddPassenger = () => {
-    if (passengers.length < parseInt(formData.numberOfPassengers.toString()) - 1) {
+    if (passengers.length < formData.numberOfPassengers - 1) {
       setPassengers([...passengers, { name: "", relation: "", dob: "", passport: "" }]);
     }
   };
@@ -80,42 +123,42 @@ export default function ApplicationForm({
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    let isValid = true;
+    if (!formData.fullName.trim()) errors.fullName = "Full name is required";
+    if (!formData.email.trim()) errors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
+      errors.email = "Invalid email";
+    if (!formData.phone.trim()) errors.phone = "Phone is required";
+    else if (!/^03\d{9}$/.test(formData.phone))
+      errors.phone = "Format: 03XXXXXXXXX";
+    if (!formData.nationality.trim()) errors.nationality = "Required";
+    if (!formData.passport.trim()) errors.passport = "Required";
+    if (!formData.dateOfBirth) errors.dateOfBirth = "Required";
+    if (formData.numberOfPassengers < 1)
+      errors.numberOfPassengers = "At least 1";
 
-    if (!formData.fullName.trim()) { errors.fullName = "Full Name is required"; isValid = false; }
-    if (!formData.email.trim()) { errors.email = "Email is required"; isValid = false; } 
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { errors.email = "Invalid email format"; isValid = false; }
-    if (!formData.phone.trim()) { errors.phone = "Phone is required"; isValid = false; }
-    else if (!/^03\d{9}$/.test(formData.phone)) { errors.phone = "Format: 03XXXXXXXXX"; isValid = false; }
-    if (!formData.nationality.trim()) { errors.nationality = "Nationality is required"; isValid = false; }
-    if (!formData.passport.trim()) { errors.passport = "Passport is required"; isValid = false; }
-    if (!formData.dateOfBirth) { errors.dateOfBirth = "Date of Birth is required"; isValid = false; }
-    
-    if (formData.numberOfPassengers < 1) { errors.numberOfPassengers = "Must be at least 1 passenger"; isValid = false; }
-    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    if (formData.travelDate) {
-      const travelDate = new Date(formData.travelDate);
-      if (travelDate < today) { errors.travelDate = "Cannot be in the past"; isValid = false; }
-    } else { errors.travelDate = "Travel date is required"; isValid = false; }
+
+    if (!formData.flexibleDates) {
+      if (!formData.travelDate) errors.travelDate = "Required or mark dates flexible";
+      else if (new Date(formData.travelDate) < today)
+        errors.travelDate = "Cannot be in the past";
+    }
 
     if (formData.returnDate && formData.travelDate) {
-      const returnDate = new Date(formData.returnDate);
-      const travelDate = new Date(formData.travelDate);
-      if (returnDate < travelDate) { errors.returnDate = "Must be after travel date"; isValid = false; }
+      if (new Date(formData.returnDate) < new Date(formData.travelDate))
+        errors.returnDate = "Must be after departure";
     }
 
     passengers.forEach((p, idx) => {
-      if (!p.name.trim()) { errors[`passenger_${idx}_name`] = "Required"; isValid = false; }
-      if (!p.relation.trim()) { errors[`passenger_${idx}_relation`] = "Required"; isValid = false; }
-      if (!p.dob) { errors[`passenger_${idx}_dob`] = "Required"; isValid = false; }
-      if (!p.passport.trim()) { errors[`passenger_${idx}_passport`] = "Required"; isValid = false; }
+      if (!p.name.trim()) errors[`passenger_${idx}_name`] = "Required";
+      if (!p.relation.trim()) errors[`passenger_${idx}_relation`] = "Required";
+      if (!p.dob) errors[`passenger_${idx}_dob`] = "Required";
+      if (!p.passport.trim()) errors[`passenger_${idx}_passport`] = "Required";
     });
 
     setValidationErrors(errors);
-    return isValid;
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -124,8 +167,16 @@ export default function ApplicationForm({
     setLoading(true);
     setError("");
 
+    const specialLines = [
+      `Contact via: ${formData.contactPreference}`,
+      formData.childrenCount > 0
+        ? `Children: ${formData.childrenCount}`
+        : null,
+      formData.flexibleDates ? "Dates are flexible." : null,
+      formData.specialRequests.trim() || null,
+    ].filter(Boolean);
+
     try {
-      // Create application
       const appRes = await fetch("/api/user/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -134,15 +185,14 @@ export default function ApplicationForm({
           applicationData: {
             ...formData,
             passengers,
+            specialRequests: specialLines.join("\n"),
           },
           totalAmount: basePrice * formData.numberOfPassengers,
         }),
       });
 
       if (!appRes.ok) throw new Error("Failed to create application");
-      const application = await appRes.json();
 
-      // Initiate payment
       const payRes = await fetch("/api/payments/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -174,316 +224,342 @@ export default function ApplicationForm({
   const calculatedPrice = basePrice * formData.numberOfPassengers;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-2xl mx-auto p-4 md:p-8">
-        {/* Header */}
-        <div className="mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 mb-6">
-            <ArrowLeft size={20} /> Back
-          </Link>
-          <h1 className="text-4xl font-bold text-white mb-2">{serviceTitle} Application</h1>
-          <p className="text-slate-400">{description}</p>
-        </div>
+    <div className="min-h-screen bg-stone-950">
+      <div className="max-w-2xl mx-auto p-4 md:p-8 pb-20">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-amber-500 hover:text-amber-400 mb-6 text-sm font-medium"
+        >
+          <ArrowLeft size={18} /> Back to home
+        </Link>
+
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 rounded-3xl border border-stone-800 bg-gradient-to-r from-amber-600/15 via-stone-900 to-stone-900 p-6 md:p-8"
+        >
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">
+            {serviceType}
+          </span>
+          <h1 className="mt-2 text-3xl md:text-4xl font-serif font-bold text-white">
+            {serviceTitle}
+          </h1>
+          <p className="mt-3 text-stone-400 text-sm leading-relaxed">{description}</p>
+          <p className="mt-4 flex items-center gap-2 text-xs text-stone-500">
+            <Shield className="h-3.5 w-3.5 text-amber-500" />
+            Secure application · Licensed travel operator
+          </p>
+        </motion.div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-200 flex gap-2">
-            <AlertCircle size={20} className="flex-shrink-0" />
+          <div className="mb-6 flex gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            <AlertCircle size={18} className="shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="mb-6 p-4 bg-green-500/20 border border-green-500 rounded-lg text-green-200">
-            Application submitted successfully! Redirecting...
+          <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+            Application submitted! Redirecting to your dashboard...
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Personal Information */}
-          <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white mb-4">Personal Information</h2>
-            
+          <section className="rounded-2xl border border-stone-800 bg-stone-900/50 p-6 space-y-4">
+            <SectionTitle>Contact details</SectionTitle>
             <div className="grid md:grid-cols-2 gap-4">
-              <div>
+              <Field label="Full name" error={validationErrors.fullName}>
                 <input
-                  type="text"
                   name="fullName"
-                  placeholder="Full Name"
                   value={formData.fullName}
                   onChange={handleInputChange}
-                  required
-                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.fullName ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none`}
+                  className={inputClass(!!validationErrors.fullName)}
                 />
-                {validationErrors.fullName && <p className="mt-1 text-xs text-red-400">{validationErrors.fullName}</p>}
-              </div>
-              <div>
+              </Field>
+              <Field label="Email" error={validationErrors.email}>
                 <input
                   type="email"
                   name="email"
-                  placeholder="Email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  required
-                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.email ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none`}
+                  className={inputClass(!!validationErrors.email)}
                 />
-                {validationErrors.email && <p className="mt-1 text-xs text-red-400">{validationErrors.email}</p>}
-              </div>
-              <div>
+              </Field>
+              <Field label="Phone (Pakistan)" error={validationErrors.phone}>
                 <input
                   type="tel"
                   name="phone"
                   placeholder="03XXXXXXXXX"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  required
-                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.phone ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none`}
+                  className={inputClass(!!validationErrors.phone)}
                 />
-                {validationErrors.phone && <p className="mt-1 text-xs text-red-400">{validationErrors.phone}</p>}
-              </div>
-              <div>
+              </Field>
+              <Field label="Preferred contact">
+                <div className="flex flex-wrap gap-2">
+                  {CONTACT_OPTIONS.map((opt) => (
+                    <Chip
+                      key={opt}
+                      active={formData.contactPreference === opt}
+                      onClick={() =>
+                        setFormData((p) => ({ ...p, contactPreference: opt }))
+                      }
+                    >
+                      {opt}
+                    </Chip>
+                  ))}
+                </div>
+              </Field>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-stone-800 bg-stone-900/50 p-6 space-y-4">
+            <SectionTitle>Traveler documents</SectionTitle>
+            <motion.div className="grid md:grid-cols-2 gap-4">
+              <Field label="Nationality" error={validationErrors.nationality}>
                 <input
-                  type="text"
                   name="nationality"
-                  placeholder="Nationality"
                   value={formData.nationality}
                   onChange={handleInputChange}
-                  required
-                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.nationality ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none`}
+                  className={inputClass(!!validationErrors.nationality)}
                 />
-                {validationErrors.nationality && <p className="mt-1 text-xs text-red-400">{validationErrors.nationality}</p>}
-              </div>
-              <div>
+              </Field>
+              <Field label="Passport number" error={validationErrors.passport}>
                 <input
-                  type="text"
                   name="passport"
-                  placeholder="Passport Number"
                   value={formData.passport}
                   onChange={handleInputChange}
-                  required
-                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.passport ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none`}
+                  className={inputClass(!!validationErrors.passport)}
                 />
-                {validationErrors.passport && <p className="mt-1 text-xs text-red-400">{validationErrors.passport}</p>}
-              </div>
-              <div>
+              </Field>
+              <Field label="Date of birth" error={validationErrors.dateOfBirth}>
                 <input
                   type="date"
                   name="dateOfBirth"
-                  placeholder="Date of Birth"
                   value={formData.dateOfBirth}
                   onChange={handleInputChange}
-                  required
-                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.dateOfBirth ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none [color-scheme:dark]`}
+                  className={`${inputClass(!!validationErrors.dateOfBirth)} [color-scheme:dark]`}
                 />
-                {validationErrors.dateOfBirth && <p className="mt-1 text-xs text-red-400">{validationErrors.dateOfBirth}</p>}
-              </div>
-            </div>
-          </div>
+              </Field>
+            </motion.div>
+          </section>
 
-          {/* Travel Details */}
-          <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white mb-4">Travel Details</h2>
-            
+          <section className="rounded-2xl border border-stone-800 bg-stone-900/50 p-6 space-y-4">
+            <SectionTitle>Trip details</SectionTitle>
+            <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-stone-800 bg-stone-950/50 px-4 py-3">
+              <input
+                type="checkbox"
+                name="flexibleDates"
+                checked={formData.flexibleDates}
+                onChange={handleInputChange}
+                className="h-4 w-4 rounded border-stone-600 text-amber-600"
+              />
+              <span className="text-sm text-stone-300">My dates are flexible</span>
+            </label>
             <div className="grid md:grid-cols-2 gap-4">
-              <div>
+              <Field
+                label={formData.flexibleDates ? "Preferred start (optional)" : "Departure date"}
+                error={validationErrors.travelDate}
+              >
                 <input
                   type="date"
                   name="travelDate"
-                  placeholder="Travel Date"
                   value={formData.travelDate}
                   onChange={handleInputChange}
-                  required
-                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.travelDate ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none [color-scheme:dark]`}
+                  className={`${inputClass(!!validationErrors.travelDate)} [color-scheme:dark]`}
                 />
-                {validationErrors.travelDate && <p className="mt-1 text-xs text-red-400">{validationErrors.travelDate}</p>}
-              </div>
-              <div>
+              </Field>
+              <Field label="Return date (optional)" error={validationErrors.returnDate}>
                 <input
                   type="date"
                   name="returnDate"
-                  placeholder="Return Date"
                   value={formData.returnDate}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.returnDate ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white placeholder-slate-400 focus:outline-none [color-scheme:dark]`}
+                  className={`${inputClass(!!validationErrors.returnDate)} [color-scheme:dark]`}
                 />
-                {validationErrors.returnDate && <p className="mt-1 text-xs text-red-400">{validationErrors.returnDate}</p>}
-              </div>
-              <div>
-                <select
+              </Field>
+              <Field label={adultLabel} error={validationErrors.numberOfPassengers}>
+                <input
+                  type="number"
                   name="numberOfPassengers"
+                  min={1}
+                  max={10}
                   value={formData.numberOfPassengers}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 bg-slate-600 border ${validationErrors.numberOfPassengers ? 'border-red-400 focus:border-red-400' : 'border-slate-500 focus:border-blue-500'} rounded-lg text-white focus:outline-none`}
+                  className={inputClass(!!validationErrors.numberOfPassengers)}
+                />
+              </Field>
+              <Field label="Children (under 12)">
+                <input
+                  type="number"
+                  name="childrenCount"
+                  min={0}
+                  max={10}
+                  value={formData.childrenCount}
+                  onChange={handleInputChange}
+                  className={inputClass(false)}
+                />
+              </Field>
+              <Field label="Meal plan">
+                <select
+                  name="mealPlan"
+                  value={formData.mealPlan}
+                  onChange={handleInputChange}
+                  className={inputClass(false)}
                 >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                    <option key={n} value={n}>{n} Passenger{n > 1 ? 's' : ''}</option>
+                  <option value="Standard">Standard</option>
+                  <option value="Vegetarian">Vegetarian</option>
+                  <option value="Halal">Halal</option>
+                  <option value="Premium">Premium</option>
+                </select>
+              </Field>
+              <Field label="Hotel preference">
+                <select
+                  name="hotelPreference"
+                  value={formData.hotelPreference}
+                  onChange={handleInputChange}
+                  className={inputClass(false)}
+                >
+                  {HOTEL_OPTIONS.map((h) => (
+                    <option key={h} value={h}>
+                      {h}
+                    </option>
                   ))}
                 </select>
-                {validationErrors.numberOfPassengers && <p className="mt-1 text-xs text-red-400">{validationErrors.numberOfPassengers}</p>}
-              </div>
-              <select
-                name="mealPlan"
-                value={formData.mealPlan}
-                onChange={handleInputChange}
-                className="px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-              >
-                <option value="Standard">Standard Meals</option>
-                <option value="Vegetarian">Vegetarian</option>
-                <option value="Halal">Halal</option>
-                <option value="Premium">Premium</option>
-              </select>
-              <select
-                name="hotelPreference"
-                value={formData.hotelPreference}
-                onChange={handleInputChange}
-                className="px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-              >
-                <option value="Budget">Budget</option>
-                <option value="Standard">Standard</option>
-                <option value="Premium">Premium</option>
-                <option value="Luxury">Luxury</option>
-              </select>
-              <select
-                name="transportPreference"
-                value={formData.transportPreference}
-                onChange={handleInputChange}
-                className="px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-              >
-                <option value="Bus">Bus</option>
-                <option value="Van">Van</option>
-                <option value="Car">Car</option>
-                <option value="Flight">Flight</option>
-              </select>
+              </Field>
+              <Field label="Transport">
+                <select
+                  name="transportPreference"
+                  value={formData.transportPreference}
+                  onChange={handleInputChange}
+                  className={inputClass(false)}
+                >
+                  <option value="Bus">Bus</option>
+                  <option value="Van">Van</option>
+                  <option value="Car">Car</option>
+                  <option value="Flight">Flight</option>
+                </select>
+              </Field>
             </div>
-
-            <label className="flex items-center gap-3 mt-4">
+            <label className="flex items-center gap-3">
               <input
                 type="checkbox"
                 name="visaRequired"
                 checked={formData.visaRequired}
                 onChange={handleInputChange}
-                className="w-4 h-4 accent-blue-600"
+                className="h-4 w-4 rounded border-stone-600 text-amber-600"
               />
-              <span className="text-white">I need visa assistance</span>
+              <span className="text-sm text-stone-300">I need visa assistance</span>
             </label>
-          </div>
+          </section>
 
-          {/* Additional Passengers */}
           {formData.numberOfPassengers > 1 && (
-            <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-6 space-y-4">
+            <section className="rounded-2xl border border-stone-800 bg-stone-900/50 p-6 space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-white">Additional Passengers</h2>
+                <SectionTitle>Additional travelers</SectionTitle>
                 <button
                   type="button"
                   onClick={handleAddPassenger}
                   disabled={passengers.length >= formData.numberOfPassengers - 1}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                  className="text-xs font-bold uppercase tracking-wider text-amber-500 hover:text-amber-400 disabled:opacity-40"
                 >
-                  Add Passenger
+                  Add traveler
                 </button>
               </div>
-
               {passengers.map((p, idx) => (
-                <div key={idx} className="bg-slate-600/50 p-4 rounded-lg space-y-3">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-white font-medium">Passenger {idx + 2}</h3>
+                <div
+                  key={idx}
+                  className="rounded-xl border border-stone-800 bg-stone-950/50 p-4 space-y-3"
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-white">
+                      Traveler {idx + 2}
+                    </span>
                     <button
                       type="button"
                       onClick={() => handleRemovePassenger(idx)}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-xs text-red-400 hover:text-red-300"
                     >
                       Remove
                     </button>
                   </div>
                   <div className="grid md:grid-cols-2 gap-3">
-                    <div>
-                      <input
-                        type="text"
-                        placeholder="Full Name"
-                        value={p.name}
-                        onChange={(e) => handlePassengerChange(idx, 'name', e.target.value)}
-                        required
-                        className={`w-full px-3 py-2 bg-slate-500 border ${validationErrors[`passenger_${idx}_name`] ? 'border-red-400' : 'border-slate-400 focus:border-blue-500'} rounded text-white placeholder-slate-300 focus:outline-none text-sm`}
-                      />
-                      {validationErrors[`passenger_${idx}_name`] && <p className="mt-1 text-xs text-red-400">{validationErrors[`passenger_${idx}_name`]}</p>}
-                    </div>
-                    <div>
-                      <input
-                        type="text"
-                        placeholder="Relation"
-                        value={p.relation}
-                        onChange={(e) => handlePassengerChange(idx, 'relation', e.target.value)}
-                        required
-                        className={`w-full px-3 py-2 bg-slate-500 border ${validationErrors[`passenger_${idx}_relation`] ? 'border-red-400' : 'border-slate-400 focus:border-blue-500'} rounded text-white placeholder-slate-300 focus:outline-none text-sm`}
-                      />
-                      {validationErrors[`passenger_${idx}_relation`] && <p className="mt-1 text-xs text-red-400">{validationErrors[`passenger_${idx}_relation`]}</p>}
-                    </div>
-                    <div>
-                      <input
-                        type="date"
-                        placeholder="Date of Birth"
-                        value={p.dob}
-                        onChange={(e) => handlePassengerChange(idx, 'dob', e.target.value)}
-                        required
-                        className={`w-full px-3 py-2 bg-slate-500 border ${validationErrors[`passenger_${idx}_dob`] ? 'border-red-400' : 'border-slate-400 focus:border-blue-500'} rounded text-white placeholder-slate-300 focus:outline-none text-sm [color-scheme:dark]`}
-                      />
-                      {validationErrors[`passenger_${idx}_dob`] && <p className="mt-1 text-xs text-red-400">{validationErrors[`passenger_${idx}_dob`]}</p>}
-                    </div>
-                    <div>
-                      <input
-                        type="text"
-                        placeholder="Passport"
-                        value={p.passport}
-                        onChange={(e) => handlePassengerChange(idx, 'passport', e.target.value)}
-                        required
-                        className={`w-full px-3 py-2 bg-slate-500 border ${validationErrors[`passenger_${idx}_passport`] ? 'border-red-400' : 'border-slate-400 focus:border-blue-500'} rounded text-white placeholder-slate-300 focus:outline-none text-sm`}
-                      />
-                      {validationErrors[`passenger_${idx}_passport`] && <p className="mt-1 text-xs text-red-400">{validationErrors[`passenger_${idx}_passport`]}</p>}
-                    </div>
+                    <input
+                      placeholder="Full name"
+                      value={p.name}
+                      onChange={(e) =>
+                        handlePassengerChange(idx, "name", e.target.value)
+                      }
+                      className={inputClass(!!validationErrors[`passenger_${idx}_name`])}
+                    />
+                    <input
+                      placeholder="Relation"
+                      value={p.relation}
+                      onChange={(e) =>
+                        handlePassengerChange(idx, "relation", e.target.value)
+                      }
+                      className={inputClass(!!validationErrors[`passenger_${idx}_relation`])}
+                    />
+                    <input
+                      type="date"
+                      value={p.dob}
+                      onChange={(e) =>
+                        handlePassengerChange(idx, "dob", e.target.value)
+                      }
+                      className={`${inputClass(!!validationErrors[`passenger_${idx}_dob`])} [color-scheme:dark]`}
+                    />
+                    <input
+                      placeholder="Passport"
+                      value={p.passport}
+                      onChange={(e) =>
+                        handlePassengerChange(idx, "passport", e.target.value)
+                      }
+                      className={inputClass(!!validationErrors[`passenger_${idx}_passport`])}
+                    />
                   </div>
                 </div>
               ))}
-            </div>
+            </section>
           )}
 
-          {/* Special Requests */}
-          <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white mb-4">Additional Information</h2>
+          <section className="rounded-2xl border border-stone-800 bg-stone-900/50 p-6">
+            <SectionTitle>Additional notes</SectionTitle>
             <textarea
               name="specialRequests"
-              placeholder="Any special requests or additional information..."
+              rows={4}
               value={formData.specialRequests}
               onChange={handleInputChange}
-              rows={4}
-              className="w-full px-4 py-3 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+              placeholder="Dietary needs, accessibility, room preferences..."
+              className={`${inputClass(false)} resize-none mt-3`}
             />
-          </div>
+          </section>
 
-          {/* Price Summary */}
-          <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-6">
-            <div className="space-y-3">
-              <div className="flex justify-between text-slate-300">
-                <span>Base Price:</span>
-                <span>${basePrice}</span>
-              </div>
-              <div className="flex justify-between text-slate-300">
-                <span>Number of Passengers:</span>
-                <span>{formData.numberOfPassengers}</span>
-              </div>
-              <div className="border-t border-slate-600 pt-3 flex justify-between text-lg font-bold text-white">
-                <span>Total Amount:</span>
-                <span className="text-green-400">${calculatedPrice}</span>
-              </div>
+          <div className="rounded-2xl border border-stone-800 bg-stone-950/80 p-5">
+            <div className="flex justify-between text-sm text-stone-400 mb-2">
+              <span>Price per {serviceType === "Car Rental" ? "vehicle" : "person"}</span>
+              <span>{formatCurrency(basePrice)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-stone-400 mb-3">
+              <span>{adultLabel}</span>
+              <span>× {formData.numberOfPassengers}</span>
+            </div>
+            <div className="flex justify-between text-white font-bold border-t border-stone-700 pt-3">
+              <span>Total</span>
+              <span className="text-amber-500">{formatCurrency(calculatedPrice)}</span>
             </div>
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition"
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-600 py-4 text-sm font-bold uppercase tracking-widest text-black hover:bg-amber-500 disabled:opacity-50 transition"
           >
-            <Send size={20} />
-            {loading ? "Processing..." : "Submit Application & Pay"}
+            {loading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
+            {loading ? "Processing..." : "Submit & proceed to payment"}
           </button>
         </form>
       </div>

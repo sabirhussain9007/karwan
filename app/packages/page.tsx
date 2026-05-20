@@ -212,6 +212,7 @@ export default function PackagesPage() {
         <BookingModal 
           serviceType={selectedPackage.category} 
           packageTitle={selectedPackage.title}
+          imageUrl={selectedPackage.imageUrl}
           basePrice={selectedPackage.salePrice && selectedPackage.salePrice > 0 ? selectedPackage.salePrice : selectedPackage.price} 
           onClose={() => setShowBooking(false)} 
         />
